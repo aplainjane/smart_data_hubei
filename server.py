@@ -127,7 +127,16 @@ def custom_prediction():
         pred_growth = 11.2 + (subsidy - 50) * 0.08
 
     # 生成预测数据
-    labels = ['2020', '2021', '2022', '2023', '2024', period.split(' ')[1]]
+    # 安全地从 `period` 中派生最后一个标签，避免因为没有空格而导致的 IndexError
+    import re
+    match = re.search(r"\b(20\d{2})\b", period)
+    if match:
+        final_label = match.group(1)
+    else:
+        parts = period.split()
+        final_label = parts[1] if len(parts) > 1 else period
+
+    labels = ['2020', '2021', '2022', '2023', '2024', final_label]
     history_data = base_growth + [None]
     pred_data = [None, None, None, None] + [11.2, round(pred_growth, 1)]
 
@@ -180,6 +189,12 @@ def get_history_data():
     params = request.get_json()
     data_type = params.get('dataType', 'air')
     time_range = params.get('timeRange', 'year2023')
+
+    # 初始化输出变量，防止在未匹配任何分支时发生未定义引用（静态默认值）
+    chart_data = {}
+    overview = {}
+    table_header = []
+    table_data = []
 
     # --------------------------
     # 1. 空气污染物数据（累计+每月平均）
@@ -468,4 +483,4 @@ if __name__ == '__main__':
     # 确保static目录存在（存放前端index.html）
     if not os.path.exists(app.static_folder):
         os.makedirs(app.static_folder)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
