@@ -2,9 +2,385 @@ from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 import os
 from datetime import datetime
+import csv
+import re
 
 app = Flask(__name__, static_folder='static')
 CORS(app)  # 启用跨域支持
+
+# 尝试导入 pandas，如果不可用则使用 csv 回退实现
+try:
+    import pandas as pd
+except Exception:
+    pd = None
+
+
+def _parse_bysj_to_ym(s):
+    """把 '2023年1月' 样式转换为 '2023-01'，失败则返回原始字符串。"""
+    if not s:
+        return s
+    m = re.search(r"(\d{4})年\s*(\d{1,2})月", str(s))
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}"
+    return str(s)
+
+
+def load_air_monthly_summary(csv_filename='data/空气污染物平均浓度情况表(0-512).csv'):
+    """读取 CSV，返回按月聚合的 chart_data、overview、table_header、table_data。
+
+    实现细节：优先使用 pandas 读取与聚合；如果没有 pandas，则用 csv.DictReader 手动聚合。
+    返回的 labels 为 ['1月','2月',...]（按所选时间段顺序），datasets 与之前接口兼容。
+    """
+    csv_path = os.path.join(os.path.dirname(__file__), csv_filename)
+
+    rows = []
+    if pd is not None:
+        try:
+            df = pd.read_csv(csv_path, encoding='utf-8')
+        except Exception:
+            # 兼容没有指定编码或有 BOM 的情况
+            df = pd.read_csv(csv_path, encoding='utf-8-sig')
+        # 清理列名
+        df.columns = [c.strip() for c in df.columns]
+        # 只保留站点行（排除均值行），避免重复计算
+        station_rows = df[df['xsq'].astype(str).str.strip() != '均值'].copy()
+        if station_rows.empty:
+            station_rows = df.copy()
+        # month 列
+        station_rows['month'] = station_rows['bysj'].apply(_parse_bysj_to_ym)
+        # 强制转数字
+        for col in ['pm25', 'pm10', 'o3']:
+            if col in station_rows.columns:
+                station_rows[col] = pd.to_numeric(station_rows[col], errors='coerce')
+            else:
+                station_rows[col] = pd.NA
+        # 按月聚合均值
+        grouped = station_rows.groupby('month', sort=True).agg({
+            'pm25': 'mean',
+            'pm10': 'mean',
+            'o3': 'mean'
+        })
+        grouped = grouped.sort_index()
+
+        # 计算每月最高 PM2.5 的站点
+        top_stations = {}
+        for month, g in station_rows.groupby('month'):
+            g2 = g.copy()
+            g2['pm25'] = pd.to_numeric(g2['pm25'], errors='coerce')
+            if not g2['pm25'].dropna().empty:
+                idx = g2['pm25'].idxmax()
+                top_stations[month] = str(g2.loc[idx, 'xsq'])
+            else:
+                top_stations[month] = ''
+
+        months = grouped.index.tolist()
+        labels = [f"{int(m.split('-')[1])}月" if isinstance(m, str) and '-' in m else str(m) for m in months]
+        pm25 = grouped['pm25'].round().fillna(0).astype(int).tolist()
+        o3 = grouped['o3'].round().fillna(0).astype(int).tolist()
+        pm10 = grouped['pm10'].round().fillna(0).astype(int).tolist()
+
+    else:
+        # fallback: 使用 csv.DictReader 手动聚合
+        if not os.path.exists(csv_path):
+            return {}, {}, [], []
+        with open(csv_path, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for r in reader:
+                rows.append(r)
+        # 过滤掉 xsq == '均值'
+        rows = [r for r in rows if r.get('xsq', '').strip() != '均值'] or rows
+        monthly = {}
+        top_stations = {}
+        for r in rows:
+            month = _parse_bysj_to_ym(r.get('bysj', ''))
+            try:
+                pm25_v = float(r.get('pm25') or 0)
+            except Exception:
+                pm25_v = 0
+            try:
+                pm10_v = float(r.get('pm10') or 0)
+            except Exception:
+                pm10_v = 0
+            try:
+                o3_v = float(r.get('o3') or 0)
+            except Exception:
+                o3_v = 0
+            if month not in monthly:
+                monthly[month] = {'pm25_sum': 0.0, 'pm10_sum': 0.0, 'o3_sum': 0.0, 'count': 0}
+            monthly[month]['pm25_sum'] += pm25_v
+            monthly[month]['pm10_sum'] += pm10_v
+            monthly[month]['o3_sum'] += o3_v
+            monthly[month]['count'] += 1
+            # top station
+            cur_top = top_stations.get(month)
+            if cur_top is None:
+                top_stations[month] = (r.get('xsq', ''), pm25_v)
+            else:
+                if pm25_v > cur_top[1]:
+                    top_stations[month] = (r.get('xsq', ''), pm25_v)
+        months = sorted(monthly.keys())
+        labels = [f"{int(m.split('-')[1])}月" if isinstance(m, str) and '-' in m else str(m) for m in months]
+        pm25 = [int(round(monthly[m]['pm25_sum'] / monthly[m]['count'])) if monthly[m]['count'] else 0 for m in months]
+        pm10 = [int(round(monthly[m]['pm10_sum'] / monthly[m]['count'])) if monthly[m]['count'] else 0 for m in months]
+        o3 = [int(round(monthly[m]['o3_sum'] / monthly[m]['count'])) if monthly[m]['count'] else 0 for m in months]
+        # convert top_stations values to names
+        top_stations = {m: top_stations[m][0] if isinstance(top_stations[m], tuple) else '' for m in months}
+
+    # 计算累计值（按月份顺序）
+    cum_pm25 = []
+    cum_o3 = []
+    cum_pm10 = []
+    s_pm25 = s_o3 = s_pm10 = 0
+    for a, b, c in zip(pm25, o3, pm10):
+        s_pm25 += a
+        s_o3 += b
+        s_pm10 += c
+        cum_pm25.append(s_pm25)
+        cum_o3.append(s_o3)
+        cum_pm10.append(s_pm10)
+
+    # 简单的空气质量描述：根据 PM2.5 年平均
+    overall_pm25_avg = int(round(sum(pm25) / len(pm25))) if pm25 else 0
+    if overall_pm25_avg <= 35:
+        quality_label = '良好'
+    elif overall_pm25_avg <= 75:
+        quality_label = '轻度污染'
+    else:
+        quality_label = '污染'
+
+    overview = {
+        'recordCount': None,  # 记录数视文件而定；在 pandas 分支我们可以更精确
+        'stationCount': None,
+        'timeSpan': '',
+        'avgQuality': quality_label,
+        'pm25Avg': f"{overall_pm25_avg} μg/m³",
+        'o3Avg': f"{int(round(sum(o3) / len(o3))) if o3 else 0} μg/m³",
+        'pm10Avg': f"{int(round(sum(pm10) / len(pm10))) if pm10 else 0} μg/m³"
+    }
+
+    # 尝试用 pandas 时填充更精确的 recordCount 与 stationCount 与 timeSpan
+    if pd is not None:
+        try:
+            df = pd.read_csv(csv_path, encoding='utf-8')
+        except Exception:
+            df = pd.read_csv(csv_path, encoding='utf-8-sig')
+        df.columns = [c.strip() for c in df.columns]
+        station_rows = df[df['xsq'].astype(str).str.strip() != '均值']
+        overview['recordCount'] = int(len(station_rows))
+        overview['stationCount'] = int(station_rows['xsq'].nunique())
+        months_full = sorted(list({_parse_bysj_to_ym(x) for x in station_rows['bysj'].tolist()}))
+        overview['timeSpan'] = f"{months_full[0]} 至 {months_full[-1]}" if months_full else ''
+    else:
+        # 在 csv 回退分支中用 rows 填充
+        if rows:
+            overview['recordCount'] = len(rows)
+            overview['stationCount'] = len(set(r.get('xsq','') for r in rows))
+            months_full = sorted(list({_parse_bysj_to_ym(r.get('bysj','')) for r in rows}))
+            overview['timeSpan'] = f"{months_full[0]} 至 {months_full[-1]}" if months_full else ''
+
+    # 构造 chart_data 与 table
+    chart_data = {
+        'labels': labels,
+        'datasets': [
+            {
+                'label': '累计细颗粒物(PM2.5) μg/m³',
+                'data': pm25,
+                'borderColor': '#00F0FF',
+                'backgroundColor': 'rgba(0, 240, 255, 0.1)',
+                'borderWidth': 2,
+                'tension': 0.4,
+                'fill': True
+            },
+            {
+                'label': '累计臭氧(O₃) μg/m³',
+                'data': o3,
+                'borderColor': '#FF0080',
+                'backgroundColor': 'rgba(255, 0, 128, 0.1)',
+                'borderWidth': 2,
+                'tension': 0.4,
+                'fill': True
+            },
+            {
+                'label': '累计可吸入物(PM10) μg/m³',
+                'data': pm10,
+                'borderColor': '#39FF14',
+                'backgroundColor': 'rgba(57, 255, 20, 0.1)',
+                'borderWidth': 2,
+                'tension': 0.4,
+                'fill': True
+            }
+        ]
+    }
+
+    table_header = ["时间", "每月PM2.5平均(μg/m³)", "每月臭氧平均(μg/m³)", "每月可吸入物平均(μg/m³)",
+                    "累计PM2.5", "累计臭氧", "累计可吸入物", "监测站点"]
+
+    table_data = []
+    for m, lab, a, b, c, cp, co, ck in zip(months, labels, pm25, o3, pm10, cum_pm25, cum_o3, cum_pm10):
+        table_data.append([m, str(a), str(b), str(c), str(cp), str(co), str(ck), top_stations.get(m, '')])
+
+    return chart_data, overview, table_header, table_data
+
+
+def _parse_numeric_from_str(s):
+    """从字符串中提取数值或区间并返回平均值（float）。"""
+    if s is None:
+        return None
+    s = str(s)
+    # 去掉百分号等非数字符号（保留 . 和 -）
+    # 提取所有浮点数
+    nums = re.findall(r"[-+]?\d*\.?\d+", s)
+    nums = [float(n) for n in nums] if nums else []
+    if not nums:
+        return None
+    if len(nums) == 1:
+        return nums[0]
+    # 若是区间取平均
+    return sum(nums) / len(nums)
+
+
+def load_water_monthly_summary(csv_filename='data/宜昌市水质自动站监测情况(0-421).csv'):
+    """读取水质监测 CSV 并按月聚合 pH、溶解氧、氨氮 等指标。
+
+    返回 (chart_data, overview, table_header, table_data)
+    chart_data.datasets 使用浮点数（保留一位小数），labels 为 ['1月', ...]
+    """
+    csv_path = os.path.join(os.path.dirname(__file__), csv_filename)
+    rows = []
+    monthly = {}
+
+    if pd is not None:
+        try:
+            df = pd.read_csv(csv_path, encoding='utf-8')
+        except Exception:
+            df = pd.read_csv(csv_path, encoding='utf-8-sig')
+        df.columns = [c.strip() for c in df.columns]
+        # 需要的列： bysj (月份), bycbxm(被测参数名), cbznd(值或范围), zdzmc(站点), szxz(水质类别)
+        for _, r in df.iterrows():
+            month = _parse_bysj_to_ym(r.get('bysj', ''))
+            item = str(r.get('bycbxm', '')).strip()
+            value = r.get('cbznd', '')
+            station = str(r.get('zdzmc', '')).strip() if 'zdzmc' in r.index else str(r.get('stmc', '')).strip()
+            sz = str(r.get('szxz', '')).strip() if 'szxz' in r.index else ''
+            if not month:
+                continue
+            if month not in monthly:
+                monthly[month] = {'ph': [], 'do': [], 'ammonia': [], 'stations': set(), 'sz_list': []}
+            monthly[month]['stations'].add(station)
+            if sz:
+                monthly[month]['sz_list'].append(sz)
+            # 优先用 cbznd 列解析，如果为空则尝试从 bycbxm 中解析括号里的数值
+            val = None
+            if value and str(value).strip() and str(value).strip() != '--':
+                val = _parse_numeric_from_str(value)
+            else:
+                # 尝试从 bycbxm 中寻找数字
+                val = _parse_numeric_from_str(item)
+            # 根据参数名分配
+            low_item = item.lower()
+            if 'ph' in low_item or 'pH' in item or '酸碱' in low_item:
+                if val is not None:
+                    monthly[month]['ph'].append(val)
+            elif '溶解氧' in item or '溶解氧' in low_item or 'do' in low_item:
+                if val is not None:
+                    monthly[month]['do'].append(val)
+            elif '氨氮' in item or 'ammonia' in low_item:
+                if val is not None:
+                    monthly[month]['ammonia'].append(val)
+            else:
+                # 其他参数忽略
+                pass
+
+    else:
+        # fallback csv
+        if not os.path.exists(csv_path):
+            return {}, {}, [], []
+        with open(csv_path, newline='', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for r in reader:
+                month = _parse_bysj_to_ym(r.get('bysj', ''))
+                item = str(r.get('bycbxm', '')).strip()
+                value = r.get('cbznd', '')
+                station = str(r.get('zdzmc', '')).strip() or str(r.get('stmc', '')).strip()
+                sz = str(r.get('szxz', '')).strip()
+                if not month:
+                    continue
+                if month not in monthly:
+                    monthly[month] = {'ph': [], 'do': [], 'ammonia': [], 'stations': set(), 'sz_list': []}
+                monthly[month]['stations'].add(station)
+                if sz:
+                    monthly[month]['sz_list'].append(sz)
+                val = None
+                if value and str(value).strip() and str(value).strip() != '--':
+                    val = _parse_numeric_from_str(value)
+                else:
+                    val = _parse_numeric_from_str(item)
+                low_item = item.lower()
+                if 'ph' in low_item or 'pH' in item or '酸碱' in low_item:
+                    if val is not None:
+                        monthly[month]['ph'].append(val)
+                elif '溶解氧' in item or '溶解氧' in low_item or 'do' in low_item:
+                    if val is not None:
+                        monthly[month]['do'].append(val)
+                elif '氨氮' in item or 'ammonia' in low_item:
+                    if val is not None:
+                        monthly[month]['ammonia'].append(val)
+
+    # 组织按时间排序的结果
+    months = sorted(monthly.keys())
+    labels = [f"{int(m.split('-')[1])}月" if '-' in m else m for m in months]
+    ph_list = []
+    do_list = []
+    ammonia_list = []
+    stations_list = []
+    sz_overview = []
+    for m in months:
+        rec = monthly[m]
+        ph_avg = round(sum(rec['ph']) / len(rec['ph']), 2) if rec['ph'] else None
+        do_avg = round(sum(rec['do']) / len(rec['do']), 2) if rec['do'] else None
+        am_avg = round(sum(rec['ammonia']) / len(rec['ammonia']), 3) if rec['ammonia'] else None
+        ph_list.append(ph_avg if ph_avg is not None else 0)
+        do_list.append(do_avg if do_avg is not None else 0)
+        ammonia_list.append(am_avg if am_avg is not None else 0)
+        stations_list.append(','.join(list(rec['stations'])[:1]))
+        # 使用最常见的水质类别
+        if rec['sz_list']:
+            from collections import Counter
+            sz_overview.append(Counter(rec['sz_list']).most_common(1)[0][0])
+        else:
+            sz_overview.append('')
+
+    # 简单概览
+    total_records = sum(len(monthly[m]['stations']) for m in months) if months else 0
+    def _avg_nonzero(lst):
+        vals = [x for x in lst if x is not None and x != 0]
+        return round(sum(vals) / len(vals), 3) if vals else ''
+
+    overview = {
+        'recordCount': total_records,
+        'monitorPoint': len({s for m in months for s in monthly[m]['stations']}) if months else 0,
+        'timeSpan': f"{months[0]} 至 {months[-1]}" if months else '',
+        'qualifiedRate': '',
+        'avgPh': _avg_nonzero(ph_list),
+        'avgDo': _avg_nonzero(do_list),
+        'avgAmmonia': _avg_nonzero(ammonia_list)
+    }
+
+    chart_data = {
+        'labels': labels,
+        'datasets': [
+            {'label': 'pH值', 'data': ph_list, 'borderColor': '#00F0FF', 'fill': True},
+            {'label': '溶解氧(mg/L)', 'data': do_list, 'borderColor': '#39FF14', 'fill': True},
+            {'label': '氨氮(mg/L)', 'data': ammonia_list, 'borderColor': '#FF0080', 'fill': True}
+        ]
+    }
+
+    table_header = ["时间", "pH值", "溶解氧(mg/L)", "氨氮(mg/L)", "水质类别", "监测点"]
+    table_data = []
+    for m, lab, p, d, a, sz, st in zip(months, labels, ph_list, do_list, ammonia_list, sz_overview, stations_list):
+        table_data.append([m, str(p), str(d), str(a), sz or '—', st or '—'])
+
+    return chart_data, overview, table_header, table_data
 
 
 # === 1️⃣ 静态文件：返回前端页面 ===
@@ -200,185 +576,151 @@ def get_history_data():
     # 1. 空气污染物数据（累计+每月平均）
     # --------------------------
     if data_type == 'air':
-        if time_range == 'year2023':
-            chart_data = {
-                "labels": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
-                "datasets": [
-                    {
-                        "label": "累计细颗粒物(PM2.5) μg/m³",
-                        "data": [42, 38, 35, 32, 28, 25, 22, 24, 27, 30, 33, 36],
-                        "borderColor": "#00F0FF",
-                        "backgroundColor": "rgba(0, 240, 255, 0.1)",
-                        "borderWidth": 2,
-                        "tension": 0.4,
-                        "fill": True
-                    },
-                    {
-                        "label": "累计臭氧(O₃) μg/m³",
-                        "data": [110, 105, 98, 120, 135, 140, 150, 145, 130, 115, 108, 102],
-                        "borderColor": "#FF0080",
-                        "backgroundColor": "rgba(255, 0, 128, 0.1)",
-                        "borderWidth": 2,
-                        "tension": 0.4,
-                        "fill": True
-                    },
-                    {
-                        "label": "累计可吸入物(PM10) μg/m³",
-                        "data": [65, 60, 55, 52, 48, 45, 42, 44, 47, 50, 53, 56],
-                        "borderColor": "#39FF14",
-                        "backgroundColor": "rgba(57, 255, 20, 0.1)",
-                        "borderWidth": 2,
-                        "tension": 0.4,
-                        "fill": True
-                    }
-                ]
-            }
-            overview = {
-                "recordCount": 365,
-                "stationCount": 24,
-                "timeSpan": "2023-01-01 至 2023-12-31",
-                "avgQuality": "良好",
-                "pm25Avg": "31 μg/m³",
-                "o3Avg": "121 μg/m³",
-                "pm10Avg": "51 μg/m³"
-            }
-            table_header = ["时间", "每月PM2.5平均(μg/m³)", "每月臭氧平均(μg/m³)", "每月可吸入物平均(μg/m³)",
-                            "累计PM2.5", "累计臭氧", "累计可吸入物", "监测站点"]
-            table_data = [
-                ["2023-01", "42", "110", "65", "42", "110", "65", "武汉光谷站"],
-                ["2023-02", "38", "105", "60", "80", "215", "125", "武汉汉口站"],
-                ["2023-03", "35", "98", "55", "115", "313", "180", "武汉武昌站"],
-                ["2023-04", "32", "120", "52", "147", "433", "232", "襄阳樊城站"],
-                ["2023-05", "28", "135", "48", "175", "568", "280", "宜昌西陵站"],
-                ["2023-06", "25", "140", "45", "200", "708", "325", "荆州沙市站"],
-                ["2023-07", "22", "150", "42", "222", "858", "367", "黄冈黄州站"],
-                ["2023-08", "24", "145", "44", "246", "1003", "411", "孝感孝南站"],
-                ["2023-09", "27", "130", "47", "273", "1133", "458", "荆门东宝站"],
-                ["2023-10", "30", "115", "50", "303", "1248", "508", "十堰茅箭站"],
-                ["2023-11", "33", "108", "53", "336", "1356", "561", "鄂州鄂城站"],
-                ["2023-12", "36", "102", "56", "372", "1458", "617", "随州曾都站"]
-            ]
+        # 从 CSV 动态加载并聚合
+        chart_data_all, overview_all, table_header_all, table_data_all = load_air_monthly_summary()
 
-        elif time_range == 'half2023':  # 2023下半年
-            chart_data = {
-                "labels": ["7月", "8月", "9月", "10月", "11月", "12月"],
-                "datasets": [
-                    {"label": "PM2.5", "data": [22, 24, 27, 30, 33, 36], "borderColor": "#00F0FF", "fill": True},
-                    {"label": "臭氧", "data": [150, 145, 130, 115, 108, 102], "borderColor": "#FF0080", "fill": True},
-                    {"label": "可吸入物", "data": [42, 44, 47, 50, 53, 56], "borderColor": "#39FF14", "fill": True}
-                ]
-            }
-            overview = {"recordCount": 184, "stationCount": 24, "timeSpan": "2023-07-01至2023-12-31",
-                        "avgQuality": "良好"}
-            table_header = ["时间", "PM2.5平均", "臭氧平均", "可吸入物平均", "累计值", "监测站点"]
-            table_data = [
-                ["2023-07", "22", "150", "42", "214", "武汉光谷站"],
-                ["2023-08", "24", "145", "44", "213", "武汉汉口站"],
-                ["2023-09", "27", "130", "47", "204", "武汉武昌站"],
-                ["2023-10", "30", "115", "50", "195", "襄阳樊城站"],
-                ["2023-11", "33", "108", "53", "194", "宜昌西陵站"],
-                ["2023-12", "36", "102", "56", "190", "荆州沙市站"]
-            ]
+        # 根据 time_range 筛选 2023 全年 / 下半年 / Q4
+        # CSV 中的月份格式为 '2023-01' 等
+        def _filter_by_range(idx_list):
+            if time_range == 'year2023':
+                return [i for i in idx_list if str(i).startswith('2023-')]
+            elif time_range == 'half2023':
+                return [i for i in idx_list if str(i).startswith('2023-') and int(str(i).split('-')[1]) >= 7]
+            else:  # q42023
+                return [i for i in idx_list if str(i).startswith('2023-') and int(str(i).split('-')[1]) >= 10]
 
-        else:  # 2023 Q4
+        # note: chart_data_all keys: 'labels'是像['1月',...], datasets里是月均值
+        all_labels = chart_data_all.get('labels', [])
+        all_month_keys = []
+        # reconstruct month keys from labels assuming year2023; fallback to index strings
+        # We have table_data with month key in first column (YYYY-MM), so use that if available
+        month_keys = [row[0] for row in table_data_all]
+        if not month_keys:
+            # fallback: assume 1-12
+            month_keys = [f'2023-{i:02d}' for i in range(1, 13)]
+
+        # select indices to keep
+        selected_months = _filter_by_range(month_keys)
+        # build filtered lists in the same order as month_keys
+        sel_indices = [month_keys.index(m) for m in selected_months if m in month_keys]
+
+        def pick(lst):
+            return [lst[i] for i in sel_indices] if lst and sel_indices else lst
+
+        # if table_data_all empty -> keep defaults
+        if table_data_all:
+            # chart datasets were pm25,o3,pm10 in that order
+            # map source lists
+            # Extract numeric lists from table_data_all
+            months = [r[0] for r in table_data_all]
+            pm25_list = [int(r[1]) for r in table_data_all]
+            o3_list = [int(r[2]) for r in table_data_all]
+            pm10_list = [int(r[3]) for r in table_data_all]
+            cum_pm25 = [int(r[4]) for r in table_data_all]
+            cum_o3 = [int(r[5]) for r in table_data_all]
+            cum_pm10 = [int(r[6]) for r in table_data_all]
+            stations = [r[7] for r in table_data_all]
+
+            labels = [f"{int(m.split('-')[1])}月" for m in months]
+            # apply selection
+            labels = [labels[i] for i in sel_indices] if sel_indices else labels
+            pm25_list = [pm25_list[i] for i in sel_indices] if sel_indices else pm25_list
+            o3_list = [o3_list[i] for i in sel_indices] if sel_indices else o3_list
+            pm10_list = [pm10_list[i] for i in sel_indices] if sel_indices else pm10_list
+            cum_pm25 = [cum_pm25[i] for i in sel_indices] if sel_indices else cum_pm25
+            cum_o3 = [cum_o3[i] for i in sel_indices] if sel_indices else cum_o3
+            cum_pm10 = [cum_pm10[i] for i in sel_indices] if sel_indices else cum_pm10
+            stations = [stations[i] for i in sel_indices] if sel_indices else stations
+
             chart_data = {
-                "labels": ["10月", "11月", "12月"],
+                "labels": labels,
                 "datasets": [
-                    {"label": "PM2.5", "data": [30, 33, 36], "borderColor": "#00F0FF"},
-                    {"label": "臭氧", "data": [115, 108, 102], "borderColor": "#FF0080"},
-                    {"label": "可吸入物", "data": [50, 53, 56], "borderColor": "#39FF14"}
+                    {"label": "累计细颗粒物(PM2.5) μg/m³", "data": pm25_list, "borderColor": "#00F0FF",
+                     "backgroundColor": "rgba(0, 240, 255, 0.1)", "borderWidth": 2, "tension": 0.4, "fill": True},
+                    {"label": "累计臭氧(O₃) μg/m³", "data": o3_list, "borderColor": "#FF0080",
+                     "backgroundColor": "rgba(255, 0, 128, 0.1)", "borderWidth": 2, "tension": 0.4, "fill": True},
+                    {"label": "累计可吸入物(PM10) μg/m³", "data": pm10_list, "borderColor": "#39FF14",
+                     "backgroundColor": "rgba(57, 255, 20, 0.1)", "borderWidth": 2, "tension": 0.4, "fill": True}
                 ]
             }
-            overview = {"recordCount": 92, "stationCount": 24, "timeSpan": "2023-10-01至2023-12-31",
-                        "avgQuality": "良好"}
-            table_header = ["时间", "PM2.5", "臭氧", "可吸入物", "站点"]
-            table_data = [
-                ["2023-10", "30", "115", "50", "武汉光谷站"],
-                ["2023-11", "33", "108", "53", "武汉汉口站"],
-                ["2023-12", "36", "102", "56", "武汉武昌站"]
-            ]
+
+            overview = overview_all or {}
+            table_header = table_header_all
+            table_data = []
+            for m, a, b, c, cp, co, ck, st in zip(months, pm25_list, o3_list, pm10_list, cum_pm25, cum_o3, cum_pm10, stations):
+                table_data.append([m, str(a), str(b), str(c), str(cp), str(co), str(ck), st])
+
+        else:
+            # 没有表格数据时回退为 CSV 聚合的 chart_data_all
+            chart_data = chart_data_all
+            overview = overview_all
+            table_header = table_header_all
+            table_data = table_data_all
 
     # --------------------------
     # 2. 水质自动检测数据
     # --------------------------
     elif data_type == 'water':
-        if time_range == 'year2023':
-            chart_data = {
-                "labels": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
-                "datasets": [
-                    {"label": "pH值", "data": [7.2, 7.3, 7.4, 7.5, 7.6, 7.5, 7.4, 7.3, 7.2, 7.3, 7.4, 7.3],
-                     "borderColor": "#00F0FF", "fill": True},
-                    {"label": "溶解氧(mg/L)", "data": [8.2, 8.3, 8.5, 8.7, 8.9, 8.8, 8.6, 8.4, 8.3, 8.5, 8.6, 8.4],
-                     "borderColor": "#39FF14", "fill": True},
-                    {"label": "氨氮(mg/L)",
-                     "data": [0.12, 0.13, 0.11, 0.10, 0.09, 0.08, 0.07, 0.09, 0.10, 0.11, 0.12, 0.11],
-                     "borderColor": "#FF0080", "fill": True}
-                ]
-            }
-            overview = {
-                "recordCount": 365,
-                "monitorPoint": 18,  # 监测点位
-                "timeSpan": "2023-01-01至2023-12-31",
-                "qualifiedRate": "98.2%",  # 合格率
-                "avgPh": "7.35",
-                "avgDo": "8.5 mg/L",
-                "avgAmmonia": "0.10 mg/L"
-            }
-            table_header = ["时间", "pH值", "溶解氧(mg/L)", "氨氮(mg/L)", "高锰酸盐指数(mg/L)", "总磷(mg/L)",
-                            "水质类别", "监测点位"]
-            table_data = [
-                ["2023-01", "7.2", "8.2", "0.12", "2.1", "0.08", "Ⅱ类", "长江武汉段"],
-                ["2023-02", "7.3", "8.3", "0.13", "2.2", "0.09", "Ⅱ类", "长江宜昌段"],
-                ["2023-03", "7.4", "8.5", "0.11", "2.0", "0.07", "Ⅱ类", "汉江襄阳段"],
-                ["2023-04", "7.5", "8.7", "0.10", "1.9", "0.06", "Ⅰ类", "东湖武汉段"],
-                ["2023-05", "7.6", "8.9", "0.09", "1.8", "0.05", "Ⅰ类", "梁子湖鄂州段"],
-                ["2023-06", "7.5", "8.8", "0.08", "1.7", "0.04", "Ⅰ类", "洪湖荆州段"],
-                ["2023-07", "7.4", "8.6", "0.07", "1.6", "0.03", "Ⅰ类", "丹江口水库"],
-                ["2023-08", "7.3", "8.4", "0.09", "1.7", "0.04", "Ⅱ类", "清江宜昌段"],
-                ["2023-09", "7.2", "8.3", "0.10", "1.8", "0.05", "Ⅱ类", "漳河荆门段"],
-                ["2023-10", "7.3", "8.5", "0.11", "1.9", "0.06", "Ⅱ类", "白莲河黄冈段"],
-                ["2023-11", "7.4", "8.6", "0.12", "2.0", "0.07", "Ⅱ类", "富水咸宁段"],
-                ["2023-12", "7.3", "8.4", "0.11", "2.1", "0.08", "Ⅱ类", "陆水赤壁段"]
-            ]
+        # 从 CSV 动态加载并按 time_range 过滤
+        chart_data_all, overview_all, table_header_all, table_data_all = load_water_monthly_summary()
 
-        elif time_range == 'half2023':
-            chart_data = {
-                "labels": ["7月", "8月", "9月", "10月", "11月", "12月"],
-                "datasets": [
-                    {"label": "pH值", "data": [7.4, 7.3, 7.2, 7.3, 7.4, 7.3], "borderColor": "#00F0FF"},
-                    {"label": "溶解氧", "data": [8.6, 8.4, 8.3, 8.5, 8.6, 8.4], "borderColor": "#39FF14"},
-                    {"label": "氨氮", "data": [0.07, 0.09, 0.10, 0.11, 0.12, 0.11], "borderColor": "#FF0080"}
-                ]
-            }
-            overview = {"recordCount": 184, "monitorPoint": 18, "qualifiedRate": "99.1%",
-                        "timeSpan": "2023-07-01至2023-12-31"}
-            table_header = ["时间", "pH值", "溶解氧", "氨氮", "水质类别", "监测点"]
-            table_data = [
-                ["2023-07", "7.4", "8.6", "0.07", "Ⅰ类", "长江武汉段"],
-                ["2023-08", "7.3", "8.4", "0.09", "Ⅱ类", "长江宜昌段"],
-                ["2023-09", "7.2", "8.3", "0.10", "Ⅱ类", "汉江襄阳段"],
-                ["2023-10", "7.3", "8.5", "0.11", "Ⅱ类", "东湖武汉段"],
-                ["2023-11", "7.4", "8.6", "0.12", "Ⅱ类", "梁子湖鄂州段"],
-                ["2023-12", "7.3", "8.4", "0.11", "Ⅱ类", "洪湖荆州段"]
-            ]
+        def _filter_by_range_months(idx_list):
+            # 支持请求中带年份（例如 'year2024'），否则使用数据中第一个可用年份
+            m = re.search(r"(20\d{2})", time_range)
+            if m:
+                target_year = m.group(1)
+            else:
+                # 从 idx_list 中推断年（以第一个 YYYY-MM 为准）
+                if idx_list:
+                    first = str(idx_list[0])
+                    target_year = first.split('-')[0] if '-' in first else first
+                else:
+                    target_year = '2023'
 
-        else:  # Q4
-            chart_data = {
-                "labels": ["10月", "11月", "12月"],
-                "datasets": [
-                    {"label": "pH值", "data": [7.3, 7.4, 7.3], "borderColor": "#00F0FF"},
-                    {"label": "溶解氧", "data": [8.5, 8.6, 8.4], "borderColor": "#39FF14"},
-                    {"label": "氨氮", "data": [0.11, 0.12, 0.11], "borderColor": "#FF0080"}
-                ]
-            }
-            overview = {"recordCount": 92, "monitorPoint": 18, "qualifiedRate": "98.9%",
-                        "timeSpan": "2023-10-01至2023-12-31"}
-            table_header = ["时间", "pH值", "溶解氧", "氨氮", "水质类别", "监测点"]
-            table_data = [
-                ["2023-10", "7.3", "8.5", "0.11", "Ⅱ类", "长江武汉段"],
-                ["2023-11", "7.4", "8.6", "0.12", "Ⅱ类", "长江宜昌段"],
-                ["2023-12", "7.3", "8.4", "0.11", "Ⅱ类", "汉江襄阳段"]
-            ]
+            if time_range.startswith('year'):
+                return [i for i in idx_list if str(i).startswith(f'{target_year}-')]
+            elif time_range.startswith('half'):
+                return [i for i in idx_list if str(i).startswith(f'{target_year}-') and int(str(i).split('-')[1]) >= 7]
+            else:  # q4
+                return [i for i in idx_list if str(i).startswith(f'{target_year}-') and int(str(i).split('-')[1]) >= 10]
+
+        month_keys = [row[0] for row in table_data_all]
+        if not month_keys:
+            month_keys = sorted([m for m in chart_data_all.get('labels', [])])
+
+        selected_months = _filter_by_range_months(month_keys)
+        sel_indices = [month_keys.index(m) for m in selected_months if m in month_keys]
+
+        if table_data_all:
+            months = [r[0] for r in table_data_all]
+            ph_list = [float(r[1]) for r in table_data_all]
+            do_list = [float(r[2]) for r in table_data_all]
+            am_list = [float(r[3]) for r in table_data_all]
+            sz_list = [r[4] for r in table_data_all]
+            stations = [r[5] for r in table_data_all]
+
+            labels = [f"{int(m.split('-')[1])}月" for m in months]
+            labels = [labels[i] for i in sel_indices] if sel_indices else labels
+            ph_list = [ph_list[i] for i in sel_indices] if sel_indices else ph_list
+            do_list = [do_list[i] for i in sel_indices] if sel_indices else do_list
+            am_list = [am_list[i] for i in sel_indices] if sel_indices else am_list
+            sz_list = [sz_list[i] for i in sel_indices] if sel_indices else sz_list
+            stations = [stations[i] for i in sel_indices] if sel_indices else stations
+
+            chart_data = {'labels': labels, 'datasets': [
+                {'label': 'pH值', 'data': ph_list, 'borderColor': '#00F0FF', 'fill': True},
+                {'label': '溶解氧(mg/L)', 'data': do_list, 'borderColor': '#39FF14', 'fill': True},
+                {'label': '氨氮(mg/L)', 'data': am_list, 'borderColor': '#FF0080', 'fill': True}
+            ]}
+
+            overview = overview_all or {}
+            table_header = table_header_all
+            table_data = []
+            for m, p, d, a, sz, st in zip(months, ph_list, do_list, am_list, sz_list, stations):
+                table_data.append([m, str(p), str(d), str(a), sz, st])
+        else:
+            chart_data = chart_data_all
+            overview = overview_all
 
     # --------------------------
     # 3. 河流基础信息数据（无时间范围差异，固定展示）
