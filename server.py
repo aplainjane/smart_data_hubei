@@ -393,6 +393,10 @@ def index():
 def data_center():
     return send_from_directory(app.static_folder, 'data_center.html')
 
+@app.route('/report')
+def report():
+    return send_from_directory(app.static_folder, 'report.html')
+
 @app.route('/about')
 def about():
     return send_from_directory(app.static_folder, 'about.html')
