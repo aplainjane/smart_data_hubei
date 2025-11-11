@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>数智湖北 · 关于我们</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .card-glass { background: rgba(14,21,37,0.72); backdrop-filter: blur(10px); border:1px solid rgba(0,240,255,0.12); }
+      .neon-border { box-shadow: 0 0 6px rgba(0,240,255,0.06); }
+    }
+  </style>
+</head>
+
+<body class="font-sans bg-gradient-to-br from-[#070815] to-[#0f1724] text-gray-200 min-h-screen">
+  <!-- 粒子背景 -->
+  <div id="particles-js" class="fixed inset-0 z-0 opacity-60"></div>
+
+  <!-- 顶部导航 -->
+  <header class="sticky top-0 z-40 card-glass py-3 neon-border backdrop-blur">
+    <div class="container mx-auto px-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B14EFF] flex items-center justify-center">
+          <i class="fa fa-info text-black text-2xl"></i>
+        </div>
+        <h1 class="text-xl font-bold text-[#00F0FF]">数智湖北<span class="text-[#B14EFF]">·关于我们</span></h1>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="home" class="text-gray-300 hover:text-[#00F0FF]">首页</a>
+        <a href="data_center" class="text-gray-300 hover:text-[#00F0FF]">数据中心</a>
+        <a href="about" class="text-[#00F0FF]">关于我们</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <main class="container mx-auto px-4 py-12 relative z-10 space-y-16">
+
+    <!-- 平台介绍 -->
+    <section class="text-center space-y-4">
+      <h2 class="text-3xl font-bold text-[#00F0FF]">平台简介</h2>
+      <p class="max-w-3xl mx-auto text-gray-300 leading-relaxed">
+        「数智湖北」是基于人工智能与大数据驱动的全域预测与可视化分析平台。
+        我们融合经济、环境、能源、社会等多维数据，通过机器学习与量子算法模型，
+        为政策制定与区域治理提供科学支撑，助力湖北建设“智慧中部样板省”。
+      </p>
+    </section>
+
+    <!-- 核心团队 -->
+    <section>
+      <h2 class="text-2xl font-bold text-[#00F0FF] mb-6 text-center">核心团队</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="card-glass p-6 rounded-lg neon-border text-center">
+          <h4 class="text-lg font-semibold">林珂烨</h4>
+          <p class="text-sm text-gray-400">项目负责人 / 系统架构师</p>
+        </div>
+        <div class="card-glass p-6 rounded-lg neon-border text-center">
+          <h4 class="text-lg font-semibold">汪久凯</h4>
+          <p class="text-sm text-gray-400">数据科学家 / AI算法专家</p>
+        </div>
+        <div class="card-glass p-6 rounded-lg neon-border text-center">
+          <h4 class="text-lg font-semibold">邓泽宇</h4>
+          <p class="text-sm text-gray-400">前端开发 / 可视化设计</p>
+        </div>
+        <div class="card-glass p-6 rounded-lg neon-border text-center">
+          <h4 class="text-lg font-semibold">刘震东</h4>
+          <p class="text-sm text-gray-400">数据科学家 / AI算法专家</p>
+        </div>
+        <div class="card-glass p-6 rounded-lg neon-border text-center">
+          <h4 class="text-lg font-semibold">张跃韬</h4>
+          <p class="text-sm text-gray-400">数据科学家 / AI算法专家</p>
+        </div>
+        <div class="card-glass p-6 rounded-lg neon-border text-center">
+          <h4 class="text-lg font-semibold">陈伟生</h4>
+          <p class="text-sm text-gray-400">数据科学家 / AI算法专家</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 技术架构 -->
+    <section>
+      <h2 class="text-2xl font-bold text-[#00F0FF] mb-6 text-center">技术架构</h2>
+      <div class="card-glass p-6 rounded-lg neon-border max-w-4xl mx-auto">
+        <ul class="space-y-2 text-gray-300">
+          <li>🧠 后端框架：Flask + Python 量化分析模块</li>
+          <li>📊 前端技术：TailwindCSS + Chart.js + ECharts</li>
+          <li>☁️ 数据服务：API 动态数据流与异步加载机制</li>
+          <li>🔒 系统特性：模块化设计、错误边界、用户自定义预测</li>
+          <li>🧩 可扩展性：支持新数据源与AI模型插件接入</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 联系我们 -->
+    <section>
+      <h2 class="text-2xl font-bold text-[#00F0FF] mb-6 text-center">联系我们</h2>
+      <div class="card-glass p-6 rounded-lg neon-border text-center max-w-3xl mx-auto">
+        <p class="mb-2 text-gray-300"><i class="fa fa-envelope text-[#00F0FF] mr-2"></i> contact@smart-hubei.cn</p>
+        <p class="mb-2 text-gray-300"><i class="fa fa-phone text-[#00F0FF] mr-2"></i> +86 027-88888888</p>
+        <p class="mb-2 text-gray-300"><i class="fa fa-map-marker text-[#00F0FF] mr-2"></i> 湖北省武汉市武汉大学信息学部</p>
+        <p class="text-gray-500 text-sm mt-3">鄂ICP备2025xxxx号</p>
+      </div>
+    </section>
+
+    <div class="text-center mt-10">
+      <a href="home" class="inline-block px-6 py-3 rounded-lg border border-[#00F0FF] text-[#00F0FF] hover:bg-[#00F0FF] hover:text-black transition">
+        <i class="fa fa-home"></i> 返回首页
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="mt-16 py-8 text-center text-gray-400">
+    © 2025 数智湖北量子数据预测平台 · All Rights Reserved
+  </footer>
+
+  <script>
+    particlesJS("particles-js", {
+      particles: {
+        number: { value: 60 },
+        color: { value: "#00F0FF" },
+        opacity: { value: 0.2 },
+        size: { value: 3 },
+        move: { speed: 0.6 }
+      },
+      retina_detect: true
+    });
+  </script>
+</body>
+</html>

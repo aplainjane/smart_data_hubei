@@ -384,10 +384,18 @@ def load_water_monthly_summary(csv_filename='data/宜昌市水质自动站监测
 
 
 # === 1️⃣ 静态文件：返回前端页面 ===
-@app.route('/')
+@app.route('/home')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
 
+
+@app.route('/data_center')
+def data_center():
+    return send_from_directory(app.static_folder, 'data_center.html')
+
+@app.route('/about')
+def about():
+    return send_from_directory(app.static_folder, 'about.html')
 
 # === 2️⃣ 核心预测指标接口（GDP、失业率、新能源汽车、PM2.5）===
 @app.route('/api/core-indicators', methods=['GET'])

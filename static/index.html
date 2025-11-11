@@ -16,7 +16,7 @@
                 extend: {
                     colors: {
                         primary: '#00F0FF', // 未来蓝
-                        secondary: '#7928CA', // 紫霓虹
+                        secondary: '#B14EFF', // 紫霓虹
                         accent: '#FF0080', // 粉霓虹
                         success: '#39FF14', // 绿霓虹
                         warning: '#FFDD00', // 黄霓虹
@@ -199,10 +199,10 @@
             </div>
 
             <nav class="hidden md:flex items-center space-x-8">
-                <a href="#" class="text-primary text-glow font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-0.5 after:bg-primary transition-all hover:text-white">数据预测</a>
-                <a href="#" class="text-gray-300 font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-primary transition-all hover:text-primary hover:after:w-full">数据中心</a>
-                <a href="#" class="text-gray-300 font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-primary transition-all hover:text-primary hover:after:w-full">分析报告</a>
-                <a href="#" class="text-gray-300 font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-primary transition-all hover:text-primary hover:after:w-full">关于我们</a>
+                <a href="home" class="text-primary text-glow font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-full after:h-0.5 after:bg-primary transition-all hover:text-white">数据预测</a>
+                <a href="data_center" class="text-gray-300 font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-primary transition-all hover:text-primary hover:after:w-full">数据中心</a>
+                <a href="home" class="text-gray-300 font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-primary transition-all hover:text-primary hover:after:w-full">分析报告</a>
+                <a href="about" class="text-gray-300 font-medium relative after:absolute after:bottom-[-4px] after:left-0 after:w-0 after:h-0.5 after:bg-primary transition-all hover:text-primary hover:after:w-full">关于我们</a>
             </nav>
 
             <div class="flex items-center space-x-4">
@@ -254,7 +254,7 @@
                 <span class="font-medium text-primary">数据更新时间：</span><span id="update-time">加载中...</span>
                 <span class="ml-2 text-gray-400">(基于量子模型实时优化)</span>
             </p>
-            <a href="#" class="text-primary hover:text-primary/80 text-sm font-medium flex items-center hover:underline">
+            <a href="home" class="text-primary hover:text-primary/80 text-sm font-medium flex items-center hover:underline">
                 查看更新日志 <i class="fa fa-angle-right ml-1"></i>
             </a>
         </div>
@@ -263,77 +263,6 @@
     <!-- 主要内容区 -->
     <main class="container mx-auto px-4 pb-20 relative z-10">
         <!-- 核心预测指标卡片 -->
-        <!-- 历史真实数据展示区 -->
-        <section class="mb-20 animate-slide-up delay-150">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-                <h3 class="text-2xl md:text-3xl font-bold text-glow flex items-center">
-                    <i class="fa fa-database text-primary mr-3 text-xl"></i> 历史真实数据档案
-                </h3>
-                <div class="flex items-center space-x-3 w-full md:w-auto">
-                    <span class="text-sm text-gray-200">数据类型：</span>
-                    <select class="bg-gray-light border border-primary/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-100 neon-border" id="history-data-type">
-                        <option value="air">空气污染物数据</option>
-                        <option value="water">水质检测数据</option>
-                        <option value="river">河流基础信息</option>
-                        <option value="basin">流域基础信息</option>
-                    </select>
-                    <span class="text-sm text-gray-200 ml-4">时间范围：</span>
-                    <select class="bg-gray-light border border-primary/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-100 neon-border" id="history-time-range">
-                        <option value="year2023">2023年度</option>
-                        <option value="half2023">2023下半年</option>
-                        <option value="q42023">2023 Q4</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- 数据卡片容器 -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- 左侧：数据概览卡片 -->
-                <div class="card-glass rounded-xl p-6 card-hover neon-border">
-                    <h4 class="font-semibold text-lg text-gray-100 mb-6 flex items-center">
-                        <i class="fa fa-info-circle text-primary mr-2"></i> 数据概览
-                    </h4>
-                    <div class="space-y-5" id="history-overview-container">
-                        <!-- 数据概览（如：数据记录数、时间跨度、监测站点数等）将通过JS渲染 -->
-                    </div>
-                </div>
-
-                <!-- 中间：核心指标趋势图 -->
-                <div class="card-glass rounded-xl p-6 card-hover neon-border lg:col-span-2">
-                    <h4 class="font-semibold text-lg text-gray-100 mb-6 flex items-center">
-                        <i class="fa fa-line-chart text-primary mr-2"></i> 核心指标历史趋势
-                    </h4>
-                    <div class="h-80 bg-dark/50 rounded-lg p-4 border border-primary/20">
-                        <!-- 历史数据图表（由后端提供数据，前端渲染） -->
-                        <canvas id="history-trend-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 详细数据表格 -->
-            <div class="card-glass rounded-xl p-6 card-hover neon-border mt-6">
-                <h4 class="font-semibold text-lg text-gray-100 mb-6 flex items-center">
-                    <i class="fa fa-table text-primary mr-2"></i> 详细历史数据
-                </h4>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="text-xs text-gray-100 uppercase bg-dark/30">
-                            <tr id="history-table-header">
-                                <!-- 表格表头将通过JS渲染 -->
-                            </tr>
-                        </thead>
-                        <tbody id="history-table-body">
-                            <!-- 表格数据将通过JS渲染 -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="flex justify-end mt-4">
-                    <button class="text-primary text-sm hover:underline flex items-center btn-glow">
-                        <i class="fa fa-download mr-2"></i> 导出详细数据（CSV）
-                    </button>
-                </div>
-            </div>
-        </section>
 
         <section class="mb-20">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 animate-slide-up">
@@ -449,7 +378,7 @@
                     <h3 class="text-2xl font-bold flex items-center text-glow">
                         <i class="fa fa-bar-chart text-primary mr-3"></i> 经济发展预测
                     </h3>
-                    <a href="#" class="text-primary hover:text-primary/80 text-sm font-medium flex items-center hover:underline">
+                    <a href="home" class="text-primary hover:text-primary/80 text-sm font-medium flex items-center hover:underline">
                         查看全部 <i class="fa fa-angle-right ml-1"></i>
                     </a>
                 </div>
@@ -493,7 +422,7 @@
                     <h3 class="text-2xl font-bold flex items-center text-glow">
                         <i class="fa fa-heartbeat text-primary mr-3"></i> 民生服务预测
                     </h3>
-                    <a href="#" class="text-primary hover:text-primary/80 text-sm font-medium flex items-center hover:underline">
+                    <a href="home" class="text-primary hover:text-primary/80 text-sm font-medium flex items-center hover:underline">
                         查看全部 <i class="fa fa-angle-right ml-1"></i>
                     </a>
                 </div>
@@ -674,11 +603,11 @@
                 <div class="animate-slide-up delay-100">
                     <h3 class="font-bold text-lg text-gray-100 mb-6">快速链接</h3>
                     <ul class="space-y-4 text-gray-400 text-sm">
-                        <li><a href="#" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据预测</a></li>
-                        <li><a href="#" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据中心</a></li>
-                        <li><a href="#" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 分析报告</a></li>
-                        <li><a href="#" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 关于我们</a></li>
-                        <li><a href="#" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 帮助中心</a></li>
+                        <li><a href="home" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据预测</a></li>
+                        <li><a href="data_center" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据中心</a></li>
+                        <li><a href="home" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 分析报告</a></li>
+                        <li><a href="about" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 关于我们</a></li>
+                        <li><a href="home" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 帮助中心</a></li>
                     </ul>
                 </div>
 
@@ -707,13 +636,13 @@
                 <div class="animate-slide-up delay-300">
                     <h3 class="font-bold text-lg text-gray-100 mb-6">关注我们</h3>
                     <div class="flex space-x-4 mb-6">
-                        <a href="#" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
+                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
                             <i class="fa fa-weixin text-xl"></i>
                         </a>
-                        <a href="#" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
+                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
                             <i class="fa fa-weibo text-xl"></i>
                         </a>
-                        <a href="#" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
+                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
                             <i class="fa fa-github text-xl"></i>
                         </a>
                     </div>
@@ -729,9 +658,9 @@
             <div class="border-t border-primary/10 mt-12 pt-8 text-center text-gray-500 text-sm">
                 <p>© 2025 数智湖北量子数据预测平台 版权所有 | 鄂ICP备12345678号-1 | 数据安全等级：三级等保</p>
                 <div class="flex justify-center space-x-6 mt-4">
-                    <a href="#" class="hover:text-primary transition-colors">隐私政策</a>
-                    <a href="#" class="hover:text-primary transition-colors">服务条款</a>
-                    <a href="#" class="hover:text-primary transition-colors">法律声明</a>
+                    <a href="home" class="hover:text-primary transition-colors">隐私政策</a>
+                    <a href="home" class="hover:text-primary transition-colors">服务条款</a>
+                    <a href="home" class="hover:text-primary transition-colors">法律声明</a>
                 </div>
             </div>
         </div>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>数智湖北 · 数据中心</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .card-glass { background: rgba(14,21,37,0.72); backdrop-filter: blur(10px); border:1px solid rgba(0,240,255,0.12); }
+      .neon-border { box-shadow: 0 0 6px rgba(0,240,255,0.06); }
+      .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 100%); animation: skeleton-anim 1.2s linear infinite; }
+      @keyframes skeleton-anim { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
+    }
+  </style>
+</head>
+
+<body class="font-sans bg-gradient-to-br from-[#070815] to-[#0f1724] text-gray-200 min-h-screen">
+  <!-- 粒子背景 -->
+  <div id="particles-js" class="fixed inset-0 z-0 opacity-60"></div>
+
+  <!-- 顶部导航 -->
+  <header class="sticky top-0 z-40 card-glass py-3 neon-border backdrop-blur">
+    <div class="container mx-auto px-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B14EFF] flex items-center justify-center">
+          <i class="fa fa-database text-black text-2xl"></i>
+        </div>
+        <h1 class="text-xl font-bold text-[#00F0FF]">数智湖北<span class="text-[#B14EFF]">·数据中心</span></h1>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="home" class="text-gray-300 hover:text-[#00F0FF]">数据预测</a>
+        <a href="data_center" class="text-[#00F0FF]">数据中心</a>
+        <a href="home" class="text-gray-300 hover:text-[#00F0FF]">数据报告</a>
+        <a href="about" class="text-gray-300 hover:text-[#00F0FF]">关于我们</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <main class="container mx-auto px-4 py-10 relative z-10">
+
+    <section class="text-center mb-8">
+      <h2 class="text-3xl font-bold mb-2">历史真实数据档案</h2>
+      <p class="text-gray-400 mb-6">探索湖北多维度历史数据趋势</p>
+    </section>
+
+    <!-- 数据控制栏（间距更紧凑） -->
+    <div class="card-glass p-4 mb-8 flex flex-col md:flex-row items-center justify-center neon-border gap-2 md:gap-4">
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-300">数据类型</label>
+        <select id="data-type" class="bg-transparent border border-[#00F0FF]/20 rounded px-3 py-1 text-gray-200">
+          <option value="air">空气质量</option>
+          <option value="water">水质监测</option>
+          <option value="river">河流基础信息</option>
+          <option value="basin">流域基础信息</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-300">时间范围</label>
+        <select id="time-range" class="bg-transparent border border-[#00F0FF]/20 rounded px-3 py-1 text-gray-200">
+          <option value="year2023">2023年度</option>
+          <option value="half2023">2023下半年</option>
+          <option value="q42023">2023 Q4</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 数据概览 -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div id="overview-card" class="card-glass p-6 rounded-lg neon-border">
+        <h4 class="font-semibold mb-4">数据概览</h4>
+        <div id="overview-skeleton" class="space-y-3">
+          <div class="h-4 rounded skeleton w-3/4"></div>
+          <div class="h-4 rounded skeleton w-1/2"></div>
+          <div class="h-4 rounded skeleton w-2/3"></div>
+        </div>
+        <div id="overview-content" class="hidden">
+          <div class="space-y-3" id="overview-container"></div>
+        </div>
+      </div>
+
+      <!-- 趋势图表 -->
+      <div class="card-glass p-6 rounded-lg neon-border lg:col-span-2">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-semibold">趋势变化图</h4>
+        </div>
+        <div class="h-72 bg-[#081025] rounded p-3">
+          <canvas id="trend-chart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 数据表格 -->
+    <section class="mt-8 card-glass p-6 rounded-lg neon-border">
+      <div class="flex justify-between items-center mb-4">
+        <h4 class="font-semibold">原始数据表</h4>
+        <button id="export-btn" class="text-[#00F0FF] hover:underline flex items-center gap-2">
+          <i class="fa fa-download"></i> 导出表格数据
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm text-left">
+          <thead>
+            <tr id="table-header" class="border-b border-[#00F0FF]/20"></tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 返回首页按钮 -->
+    <div class="text-center mt-12">
+      <a href="home" class="inline-block px-6 py-3 rounded-lg border border-[#00F0FF] text-[#00F0FF] hover:bg-[#00F0FF] hover:text-black transition">
+        <i class="fa fa-home"></i> 返回首页
+      </a>
+    </div>
+
+  </main>
+
+  <!-- 加载中遮罩 -->
+  <div id="loading-overlay" class="hidden fixed inset-0 bg-black/70 z-50 flex flex-col items-center justify-center text-[#00F0FF]">
+    <i class="fa fa-spinner fa-spin text-4xl mb-3"></i>
+    <div class="text-lg">数据加载中，请稍候...</div>
+  </div>
+
+  <footer class="mt-16 py-8 text-center text-gray-400">
+    © 2025 数智湖北量子数据预测平台
+  </footer>
+
+  <script>
+    particlesJS("particles-js", {
+      particles: { number: { value: 50 }, color: { value: "#00F0FF" }, opacity: { value: 0.16 }, size: { value: 3 }, move: { speed: 0.6 } },
+      retina_detect: true
+    });
+
+    let chart = null;
+
+    async function loadData() {
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.remove('hidden');
+
+      const dataType = document.getElementById('data-type').value;
+      const timeRange = document.getElementById('time-range').value;
+
+      document.getElementById('overview-skeleton').classList.remove('hidden');
+      document.getElementById('overview-content').classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/history-data', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({dataType, timeRange})
+        });
+        const data = await res.json();
+
+        // 模拟加载延迟 1 秒以增强用户感知
+        await new Promise(r => setTimeout(r, 500));
+
+        renderOverview(data.overview);
+        renderTable(data.tableHeader, data.tableData);
+        renderChart(data.chartData);
+      } catch(e) {
+        alert('数据加载失败，请稍后重试');
+      } finally {
+        overlay.classList.add('hidden');
+        document.getElementById('overview-skeleton').classList.add('hidden');
+        document.getElementById('overview-content').classList.remove('hidden');
+      }
+    }
+
+    function renderOverview(ov) {
+      const el = document.getElementById('overview-container');
+      el.innerHTML = `
+        <div class="flex justify-between"><span class="text-gray-300">数据记录数</span><span class="text-[#00F0FF]">${ov.recordCount||0}</span></div>
+        <div class="flex justify-between"><span class="text-gray-300">监测站点数</span><span class="text-[#00F0FF]">${ov.stationCount||ov.monitorPoint||0}</span></div>
+        <div class="flex justify-between"><span class="text-gray-300">时间跨度</span><span class="text-gray-300">${ov.timeSpan||'—'}</span></div>
+        <div class="flex justify-between"><span class="text-gray-300">平均质量等级</span><span class="text-[#39FF14]">${ov.avgQuality||ov.qualifiedRate||'—'}</span></div>
+      `;
+    }
+
+    function renderTable(header, rows) {
+      const th = document.getElementById('table-header');
+      const tb = document.getElementById('table-body');
+      th.innerHTML = header.map(h => `<th class="px-4 py-2">${h}</th>`).join('');
+      tb.innerHTML = rows.map(r => `<tr class="border-b border-[#00F0FF]/10">${r.map(c=>`<td class="px-4 py-2">${c}</td>`).join('')}</tr>`).join('');
+    }
+
+    function renderChart(data) {
+      const ctx = document.getElementById('trend-chart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type:'line',
+        data:{labels:data.labels||[],datasets:data.datasets||[]},
+        options:{responsive:true}
+      });
+    }
+
+    // 自动加载机制：下拉框变化时立即加载
+    document.getElementById('data-type').addEventListener('change', loadData);
+    document.getElementById('time-range').addEventListener('change', loadData);
+
+    // 页面初始化时自动加载一次
+    document.addEventListener('DOMContentLoaded', loadData);
+
+    // 导出功能
+    document.getElementById('export-btn').addEventListener('click', ()=>{
+      const header = document.getElementById('table-header');
+      const body = document.getElementById('table-body');
+      if (!body || !body.innerText.trim()) return alert('暂无可导出数据');
+      const rows = [
+        Array.from(header.querySelectorAll('th')).map(th=>th.textContent.trim()).join(','),
+        ...Array.from(body.querySelectorAll('tr')).map(tr => Array.from(tr.querySelectorAll('td')).map(td=>`"${td.textContent}"`).join(','))
+      ];
+      const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'history-data.csv';
+      link.click();
+    });
+  </script>
+</body>
+</html>
