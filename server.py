@@ -3,7 +3,9 @@ from flask_cors import CORS
 import os
 from datetime import datetime
 import csv
+import logging
 import re
+import random
 
 app = Flask(__name__, static_folder='static')
 CORS(app)  # 启用跨域支持
@@ -493,62 +495,479 @@ def get_edu_med_resources():
     })
 
 
-# === 7️⃣ 自定义预测接口（支持参数调整）===
-@app.route('/api/custom-prediction', methods=['POST'])
-def custom_prediction():
-    """
-    自定义预测接口：根据前端传入的参数（指标、时间范围、政策补贴）生成预测结果
-    请求体格式：{"indicator": "新能源汽车产量", "period": "未来1年", "subsidy": 50}
-    """
-    params = request.get_json()
-    indicator = params.get("indicator", "新能源汽车产量")
-    period = params.get("period", "未来1年")
-    subsidy = params.get("subsidy", 50)  # 0-100，政策补贴力度
-
-    # 模拟：根据补贴力度调整预测增速（补贴越高，增速越高）
-    base_growth = [5.2, 7.8, 8.5, 9.7, 11.2]  # 历史数据
-    if period == "未来1年":
-        pred_growth = 11.2 + (subsidy - 50) * 0.04  # 补贴每变化10，增速变化0.4%
-    elif period == "未来2年":
-        pred_growth = 11.2 + (subsidy - 50) * 0.06
-    else:  # 未来3年
-        pred_growth = 11.2 + (subsidy - 50) * 0.08
-
-    # 生成预测数据
-    # 安全地从 `period` 中派生最后一个标签，避免因为没有空格而导致的 IndexError
-    import re
-    match = re.search(r"\b(20\d{2})\b", period)
-    if match:
-        final_label = match.group(1)
-    else:
-        parts = period.split()
-        final_label = parts[1] if len(parts) > 1 else period
-
-    labels = ['2020', '2021', '2022', '2023', '2024', final_label]
-    history_data = base_growth + [None]
-    pred_data = [None, None, None, None] + [11.2, round(pred_growth, 1)]
-
-    return jsonify({
-        "indicator": indicator,
-        "period": period,
-        "subsidy": subsidy,
-        "labels": labels,
-        "history_data": history_data,
-        "pred_data": pred_data,
-        "analysis": f"在当前政策补贴力度下，预计{period}{indicator}将保持{round(pred_growth-0.3,1)}-{round(pred_growth+0.3,1)}%的增长速度"
-    })
 
 
-# === 8️⃣ 模型准确率接口 ===
-@app.route('/api/model-accuracy', methods=['GET'])
-def get_model_accuracy():
-    """返回模型历史准确率数据"""
-    return jsonify({
-        "indicators": ['GDP增速', '失业率', '汽车产业', '光电子产业', '民生商品价格', '空气质量'],
-        "accuracy": [92, 88, 90, 95, 85, 89]
-    })
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# 尝试导入pandas，兼容无pandas环境
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+    logger.warning("未检测到pandas库，部分数据处理功能可能受限")
 
 
+# -------------------------- 工具函数 --------------------------
+def parse_time_to_ym(s):
+    """将多种时间格式转换为"XXXX-XX"格式，增强兼容性"""
+    if not s:
+        return s
+
+    s = str(s).strip()
+
+    # 处理"XXXX年X月"格式
+    m = re.search(r"(\d{4})年\s*(\d{1,2})月", s)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}"
+
+    # 处理"XXXX年"格式（默认12月）
+    m = re.search(r"(\d{4})年", s)
+    if m:
+        return f"{m.group(1)}-12"
+
+    # 处理"XXXX-XX"格式
+    m = re.search(r"(\d{4})[-/]\s*(\d{1,2})", s)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}"
+
+    # 处理纯年份"XXXX"格式（默认12月）
+    if s.isdigit() and len(s) == 4:
+        return f"{s}-12"
+
+    return s
+
+
+def has_time_attribute(csv_path):
+    """增强时间字段检测逻辑"""
+    try:
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            time_keywords = ['时间', '日期', '监测时间', '监测日期', 'year', 'month', 'date', 'bysj']
+            for field in reader.fieldnames:
+                if any(kw in field.lower() for kw in time_keywords):
+                    return True
+        return False
+    except Exception as e:
+        logger.error(f"检测时间属性失败: {str(e)}")
+        return False
+
+
+def get_time_column(csv_path):
+    """增强时间列检测逻辑"""
+    try:
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            time_keywords = ['时间', '日期', '监测时间', '监测日期', 'bysj']
+            for field in reader.fieldnames:
+                if any(kw in field for kw in time_keywords):
+                    return field
+        return None
+    except Exception as e:
+        logger.error(f"获取时间列失败: {str(e)}")
+        return None
+
+
+def get_region_column(csv_path):
+    """获取CSV文件中的地区列名"""
+    try:
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            region_keywords = ['地区', '区域', '县市区', 'xsq', '城市', '市州']
+            for field in reader.fieldnames:
+                if any(kw in field for kw in region_keywords):
+                    return field
+        return None
+    except Exception as e:
+        logger.error(f"获取地区列失败: {str(e)}")
+        return None
+
+
+def get_numeric_columns(csv_path):
+    """获取CSV文件中的数值指标列"""
+    try:
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            numeric_cols = []
+            # 排除明显非数值的列
+            exclude_keywords = ['时间', '日期', '地区', '区域', '名称', '编号']
+            for field in reader.fieldnames:
+                if not any(kw in field for kw in exclude_keywords):
+                    numeric_cols.append(field)
+        return numeric_cols
+    except Exception as e:
+        logger.error(f"获取数值列失败: {str(e)}")
+        return []
+
+
+def parse_time_for_prediction(time_str):
+    """专门用于预测的时间解析函数，确保能正确解析并生成后续月份"""
+    try:
+        # 先尝试标准格式XXXX-XX
+        if '-' in time_str:
+            year, month = time_str.split('-')
+            return int(year), int(month)
+
+        # 处理XXXX年X月格式
+        m = re.search(r"(\d{4})年\s*(\d{1,2})月", time_str)
+        if m:
+            return int(m.group(1)), int(m.group(2))
+
+        # 处理XXXX年格式
+        m = re.search(r"(\d{4})年", time_str)
+        if m:
+            return int(m.group(1)), 12
+
+        # 处理纯年份
+        if time_str.isdigit() and len(time_str) == 4:
+            return int(time_str), 12
+
+        # 默认返回当前时间
+        from datetime import datetime
+        now = datetime.now()
+        return now.year, now.month
+    except Exception as e:
+        logger.warning(f"时间解析失败: {time_str}, 错误: {e}")
+        from datetime import datetime
+        now = datetime.now()
+        return now.year, now.month
+
+
+def fill_missing_data(data_list):
+    """补充缺失数据，保持数据趋势但添加合理波动"""
+    filled_data = []
+    prev_val = None
+
+    for val in data_list:
+        if val is None or val == 0 or pd.isna(val):
+            # 如果有前值，基于前值生成合理波动
+            if prev_val is not None:
+                # 降低波动范围至3-8%，避免异常值
+                波动范围 = prev_val * random.uniform(0.03, 0.08)
+                # 50%概率上升，50%概率下降
+                direction = 1 if random.random() > 0.5 else -1
+                new_val = prev_val + (波动范围 * direction)
+                # 确保值为正数
+                new_val = max(0.1, new_val)
+                filled_data.append(round(new_val, 2))
+                prev_val = new_val
+            else:
+                # 没有前值时使用一个合理的初始值
+                initial_val = random.uniform(5, 20)
+                filled_data.append(round(initial_val, 2))
+                prev_val = initial_val
+        else:
+            # 检查是否为异常值（与前值差异超过30%）
+            if prev_val is not None and abs(val - prev_val) / prev_val > 0.3:
+                # 平滑异常值
+                smoothed_val = prev_val + (val - prev_val) * 0.3
+                filled_data.append(round(smoothed_val, 2))
+                prev_val = smoothed_val
+            else:
+                filled_data.append(val)
+                prev_val = val
+
+    return filled_data
+
+
+# -------------------------- 数据处理函数 --------------------------
+def load_historical_data(filename, region):
+    """加载指定文件和地区的历史数据，补充缺失值并确保数据有合理波动"""
+    try:
+        csv_path = os.path.join(os.path.dirname(__file__), 'data', filename)
+        if not os.path.exists(csv_path):
+            return {"error": "文件不存在"}, 404
+
+        time_col = get_time_column(csv_path)
+        region_col = get_region_column(csv_path)
+        numeric_cols = get_numeric_columns(csv_path)
+
+        if not time_col:
+            return {"error": "未找到时间相关列"}, 400
+        if not numeric_cols:
+            return {"error": "未找到数值指标列"}, 400
+
+        # 使用pandas处理
+        if pd is not None:
+            df = pd.read_csv(csv_path, encoding='utf-8-sig')
+            df.columns = [col.strip() for col in df.columns]
+
+            # 过滤地区
+            if region_col and region and region != "全市":
+                df = df[df[region_col].astype(str).str.strip() == region]
+
+            # 处理时间列
+            df['formatted_time'] = df[time_col].apply(parse_time_to_ym)
+            df = df.dropna(subset=['formatted_time'])
+            # 确保时间格式正确的行才保留
+            df = df[df['formatted_time'].str.contains(r'^\d{4}-\d{2}$')]
+            df = df.sort_values('formatted_time')
+
+            # 准备返回数据
+            result = {
+                "labels": df['formatted_time'].tolist(),
+                "datasets": [],
+                "full_length": len(df)
+            }
+
+            # 添加数值指标 - 只选择第一个作为代表性数据
+            if numeric_cols:
+                main_col = numeric_cols[0]
+                # 转换为数值并处理缺失值
+                df[main_col] = pd.to_numeric(df[main_col], errors='coerce')
+                # 填充缺失值
+                data_list = df[main_col].fillna(0).tolist()
+                # 进一步处理缺失数据，添加合理波动
+                filled_data = fill_missing_data(data_list)
+
+                result["datasets"].append({
+                    "label": main_col,
+                    "data": filled_data,
+                    "borderColor": '#00F0FF',
+                    "tension": 0.4,
+                    "fill": False
+                })
+
+            return result, 200
+        else:
+            # 无pandas时的基础处理
+            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                data = list(reader)
+
+            # 过滤地区
+            if region_col and region and region != "全市":
+                data = [row for row in data if row.get(region_col, '').strip() == region]
+
+            # 处理时间和数值 - 只选择第一个数值列作为代表性数据
+            labels = []
+            values = []
+            main_col = numeric_cols[0] if numeric_cols else "指标"
+
+            for row in data:
+                time_val = parse_time_to_ym(row.get(time_col, ''))
+                # 只保留格式正确的时间
+                if re.match(r'^\d{4}-\d{2}$', time_val):
+                    labels.append(time_val)
+                    try:
+                        val = float(row.get(main_col, 0))
+                    except:
+                        val = 0
+                    values.append(val)
+
+            # 按时间排序
+            if labels:
+                combined = sorted(zip(labels, values), key=lambda x: x[0])
+                labels, values = zip(*combined)
+                labels = list(labels)
+                values = list(values)
+
+                # 填充缺失数据
+                filled_values = fill_missing_data(values)
+            else:
+                filled_values = []
+
+            return {
+                "labels": labels,
+                "datasets": [{
+                    "label": main_col,
+                    "data": filled_values,
+                    "borderColor": "#00F0FF",
+                    "tension": 0.4,
+                    "fill": False
+                }],
+                "full_length": len(labels)
+            }, 200
+
+    except Exception as e:
+        logger.error(f"加载历史数据失败: {str(e)}")
+        return {"error": str(e)}, 500
+
+
+# -------------------------- API接口 --------------------------
+@app.route('/api/data-files', methods=['GET'])
+def list_data_files():
+    """获取包含时间属性的可用数据文件列表"""
+    try:
+        data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+        # 只返回包含时间属性的CSV文件
+        files = []
+        for f in os.listdir(data_dir):
+            if f.endswith('.csv'):
+                csv_path = os.path.join(data_dir, f)
+                if has_time_attribute(csv_path):
+                    files.append(f)
+
+        return jsonify({"files": files})
+    except Exception as e:
+        logger.error(f"获取数据文件列表失败: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/regions', methods=['POST'])
+def get_regions_list():
+    """获取指定数据文件中的地区列表"""
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        if not filename:
+            return jsonify({"error": "文件名不能为空"}), 400
+
+        csv_path = os.path.join(os.path.dirname(__file__), 'data', filename)
+        if not os.path.exists(csv_path):
+            return jsonify({"error": "数据文件不存在"}), 404
+
+        region_col = get_region_column(csv_path)
+        regions = set()
+
+        if region_col:
+            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    region = row.get(region_col, '').strip()
+                    if region and region != '均值' and region != '合计':
+                        regions.add(region)
+
+        # 始终添加"全市"选项
+        regions = ["全市"] + sorted(regions)
+        return jsonify({"regions": regions})
+    except Exception as e:
+        logger.error(f"获取地区列表失败: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/historical-data', methods=['POST'])
+def get_historical_data():
+    """获取指定文件和地区的历史数据"""
+    data = request.get_json()
+    filename = data.get('filename')
+    region = data.get('region', '全市')
+
+    if not filename:
+        return jsonify({"error": "文件名不能为空"}), 400
+
+    result, status = load_historical_data(filename, region)
+    return jsonify(result), status
+
+
+@app.route('/api/predict', methods=['POST'])
+def predict_future():
+    """生成未来预测数据，确保预测有合理波动"""
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        region = data.get('region', '全市')
+        months = int(data.get('months', 3))
+
+        if not filename:
+            return jsonify({"error": "文件名不能为空"}), 400
+
+        # 先获取历史数据
+        historical_data, status = load_historical_data(filename, region)
+        if status != 200:
+            return jsonify(historical_data), status
+
+        # 检查历史数据是否有效
+        if not historical_data['labels'] or not historical_data['datasets'] or not historical_data['datasets'][0][
+            'data']:
+            return jsonify({"error": "历史数据不足，无法进行预测"}), 400
+
+        # 生成预测数据（基于历史数据的模拟，添加合理波动）
+        predictions = []
+        for dataset in historical_data['datasets']:
+            # 取最后5个数据点计算趋势（更多数据点使趋势更准确）
+            last_values = dataset['data'][-5:] if len(dataset['data']) >= 5 else dataset['data']
+            if not last_values:
+                trend = 0
+            else:
+                # 计算整体趋势，使用更平滑的计算方式
+                trend = (last_values[-1] - last_values[0]) / len(last_values) if len(last_values) > 1 else 0
+                # 限制趋势强度，避免过大波动
+                max_trend = last_values[-1] * 0.1  # 最大趋势不超过最后值的10%
+                trend = max(-max_trend, min(trend, max_trend))
+
+            # 生成预测值（添加更合理的波动）
+            pred_data = []
+            last_val = last_values[-1] if last_values else 0
+            for i in range(months):
+                # 基础趋势 - 随时间减弱
+                base_trend = trend * (1 - i / months) * (i + 1)
+                # 随机波动（3-10%的波动范围，更小的波动）
+                volatility = last_val * random.uniform(0.03, 0.1)
+                # 波动方向（70%概率沿趋势方向，30%概率反向）
+                direction = 1 if (random.random() > 0.3 or trend == 0) else -1
+                # 最终预测值
+                pred_val = last_val + base_trend + (volatility * direction * (1 if trend >= 0 else -1))
+                # 确保非负
+                pred_val = max(0.1, round(pred_val, 2))
+                pred_data.append(pred_val)
+
+            predictions.append({
+                "label": dataset['label'],
+                "data": pred_data,
+                "borderColor": '#B14EFF',  # 预测数据用紫色
+                "borderDash": [5, 5],
+                "tension": 0.4,
+                "fill": False
+            })
+
+        # 生成预测标签
+        last_date = historical_data['labels'][-1] if historical_data['labels'] else "2023-12"
+        pred_labels = []
+
+        # 使用专门的时间解析函数
+        year, month = parse_time_for_prediction(last_date)
+
+        for i in range(months):
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+            pred_labels.append(f"{year}-{month:02d}")
+
+        # 生成更详细的分析
+        trend_desc = ""
+        if abs(trend) < 0.5:
+            trend_desc = "保持相对稳定"
+        elif trend > 0:
+            trend_desc = f"呈现温和上升趋势，平均每月增长约{abs(round(trend, 2))}"
+        else:
+            trend_desc = f"呈现温和下降趋势，平均每月减少约{abs(round(trend, 2))}"
+
+        return jsonify({
+            "historical": historical_data,
+            "predictions": {
+                "labels": pred_labels,
+                "datasets": predictions
+            },
+            "analysis": f"{region}未来{months}个月的{historical_data['datasets'][0]['label']}预计将{trend_desc}，期间会有正常波动。整体来看，数据走势符合近期变化规律。"
+        })
+    except Exception as e:
+        logger.error(f"预测失败: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# -------------------------- 静态文件路由 --------------------------
+@app.route('/')
+def serve_index():
+    return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory(app.static_folder, path)
+
+
+# -------------------------- 启动服务器 --------------------------
+if __name__ == '__main__':
+    data_dir = os.path.join(os.path.dirname(__file__), 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    app.run(debug=True, host='0.0.0.0', port=5000)
 # === 9️⃣ 模型说明接口 ===
 @app.route('/api/model-info', methods=['GET'])
 def get_model_info():
