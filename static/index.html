@@ -90,7 +90,7 @@
                 background: linear-gradient(135deg, #0A0E17 0%, #1E293B 100%);
             }
             .text-glow {
-                text-shadow: 0 0 4px rgba(0, 240, 255, 0.6), 0 0 8px rgba(0, 240, 255, 0.3); /* 缩小发光范围+降低透明度 */
+                text-shadow: 0 0 4px rgba(0, 240, 255, 0.6), 0 0 8px rgba(0, 240, 255, 0.3);
             }
             .text-glow-purple {
                 text-shadow: 0 0 4px rgba(121, 40, 202, 0.6), 0 0 8px rgba(121, 40, 202, 0.3);
@@ -121,11 +121,11 @@
                 background-size: 100% 400%;
             }
             .grid-bg {
-                background-image: url('/static/bg.jpg'); /* 深色科技感图片（可替换为自己的图） */
-                background-size: cover; /* 图片铺满屏幕 */
-                background-position: center; /* 图片居中 */
-                background-attachment: fixed; /* 滚动时背景固定 */
-                background-blend-mode: overlay; /* 与渐变叠加，增强层次感 */
+                background-image: url('/static/bg.jpg');
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+                background-blend-mode: overlay;
             }
             .neon-border {
                 box-shadow: 0 0 5px theme(colors.primary), 0 0 10px theme(colors.primary/50);
@@ -263,7 +263,6 @@
     <!-- 主要内容区 -->
     <main class="container mx-auto px-4 pb-20 relative z-10">
         <!-- 核心预测指标卡片 -->
-
         <section class="mb-20">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 animate-slide-up">
                 <h3 class="text-2xl md:text-3xl font-bold text-glow flex items-center">
@@ -459,123 +458,581 @@
             </div>
         </section>
 
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数智湖北 - 数据预测平台</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .card-glass {
-                background: rgba(14, 21, 37, 0.6);
-                backdrop-filter: blur(8px);
-            }
-            .neon-border {
-                border: 1px solid rgba(0, 240, 255, 0.3);
-                box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-            }
-            .text-glow {
-                text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
-            }
-        }
-    </style>
-</head>
-<body class="bg-gray-900 text-gray-200 min-h-screen">
-    <!-- 自定义预测工具模块 -->
-    <section class="container mx-auto px-4 py-12">
-        <div class="card-glass rounded-xl p-6 md:p-8 neon-border">
-            <h3 class="text-2xl font-bold mb-8 text-glow">自定义预测工具</h3>
+        <!-- 自定义预测工具 -->
+        <section class="mb-20 animate-slide-up">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold flex items-center text-glow">
+                    <i class="fa fa-calculator text-primary mr-3"></i> 自定义预测工具
+                </h3>
+                <a href="data_center" class="text-primary hover:text-primary/80 text-sm font-medium flex items-center hover:underline">
+                    数据中心 <i class="fa fa-angle-right ml-1"></i>
+                </a>
+            </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- 参数设置 -->
-                <div class="bg-dark/50 rounded-lg p-6 border border-primary/20">
-                    <h4 class="font-medium text-lg text-gray-100 mb-6">参数设置</h4>
+            <div class="card-glass rounded-xl p-6 md:p-8 neon-border">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- 参数设置 -->
+                    <div class="bg-dark/50 rounded-lg p-6 border border-primary/20">
+                        <h4 class="font-medium text-lg text-gray-100 mb-6">参数设置</h4>
 
-                    <div class="space-y-6">
-                        <!-- 数据文件选择 -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-3">选择数据集</label>
-                            <select class="w-full bg-gray-800 border border-primary/30 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-200 neon-border" id="data-file-select">
-                                <option value="">加载中...</option>
-                            </select>
-                        </div>
-
-                        <!-- 地区选择 -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-3">预测地区</label>
-                            <select class="w-full bg-gray-800 border border-primary/30 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-200 neon-border" id="region-select" disabled>
-                                <option value="全市">全市</option>
-                            </select>
-                        </div>
-
-                        <!-- 预测时长 -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-3">预测时长</label>
-                            <select class="w-full bg-gray-800 border border-primary/30 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-200 neon-border" id="prediction-months">
-                                <option value="1">1个月</option>
-                                <option value="3" selected>3个月</option>
-                                <option value="6">6个月</option>
-                                <option value="12">12个月</option>
-                            </select>
-                        </div>
-
-                        <button class="w-full py-3 bg-gradient-to-r from-[#00F0FF] to-[#B14EFF] text-white rounded-lg hover:opacity-90 transition-all neon-border" id="generate-prediction">
-                            生成预测结果 <i class="fa fa-calculator ml-2"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 预测结果展示 -->
-                <div class="lg:col-span-2">
-                    <h4 class="font-medium text-lg text-gray-100 mb-6">预测结果：<span id="current-indicator">请选择参数并生成预测</span></h4>
-
-                    <!-- 图表容器 -->
-                    <div class="h-80 bg-dark/50 rounded-lg p-4 border border-primary/20 mb-6 relative">
-                        <!-- 加载指示器 -->
-                        <div id="prediction-loading" class="hidden absolute inset-0 bg-dark/70 flex items-center justify-center">
-                            <i class="fa fa-spinner fa-spin text-2xl text-primary mr-3"></i>
-                            <span class="text-gray-300">正在计算预测数据...</span>
-                        </div>
-                        <canvas id="predictionChart"></canvas>
-                    </div>
-
-                    <!-- 预测分析 -->
-                    <div class="p-5 bg-primary/5 rounded-lg border border-primary/20">
-                        <h5 class="font-medium mb-3 text-sm text-primary text-glow">预测分析</h5>
-                        <p class="text-sm text-gray-300 mb-4" id="prediction-analysis">
-                            请选择数据集、地区和预测时长，点击"生成预测结果"查看分析...
-                        </p>
-                        <div class="flex flex-wrap justify-between items-center gap-4">
-                            <div class="text-xs text-gray-400">
-                                <span class="inline-block w-3 h-3 rounded-full bg-primary/30 mr-2"></span>
-                                历史数据
-                                <span class="inline-block w-3 h-3 rounded-full bg-secondary ml-4 mr-2"></span>
-                                预测数据
+                        <div class="space-y-6">
+                            <!-- 数据文件选择 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-3">选择数据集</label>
+                                <select class="w-full bg-gray-800 border border-primary/30 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-200 neon-border" id="data-file-select">
+                                    <option value="">加载中...</option>
+                                </select>
                             </div>
-                            <button class="text-primary text-sm hover:underline flex items-center" id="export-data">
-                                <i class="fa fa-download mr-2"></i> 导出数据（CSV）
+
+                            <!-- 地区选择 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-3">预测地区</label>
+                                <select class="w-full bg-gray-800 border border-primary/30 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-200 neon-border" id="region-select" disabled>
+                                    <option value="全市">全市</option>
+                                </select>
+                            </div>
+
+                            <!-- 预测时长 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-3">预测时长</label>
+                                <select class="w-full bg-gray-800 border border-primary/30 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/70 text-gray-200 neon-border" id="prediction-months">
+                                    <option value="1">1个月</option>
+                                    <option value="3" selected>3个月</option>
+                                    <option value="6">6个月</option>
+                                    <option value="12">12个月</option>
+                                </select>
+                            </div>
+
+                            <button class="w-full py-3 bg-gradient-to-r from-[#00F0FF] to-[#B14EFF] text-white rounded-lg hover:opacity-90 transition-all neon-border" id="generate-prediction">
+                                生成预测结果 <i class="fa fa-calculator ml-2"></i>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- 预测结果展示 -->
+                    <div class="lg:col-span-2">
+                        <h4 class="font-medium text-lg text-gray-100 mb-6">预测结果：<span id="current-indicator">请选择参数并生成预测</span></h4>
+
+                        <!-- 图表容器 -->
+                        <div class="h-80 bg-dark/50 rounded-lg p-4 border border-primary/20 mb-6 relative">
+                            <!-- 加载指示器 -->
+                            <div id="prediction-loading" class="hidden absolute inset-0 bg-dark/70 flex items-center justify-center">
+                                <i class="fa fa-spinner fa-spin text-2xl text-primary mr-3"></i>
+                                <span class="text-gray-300">正在计算预测数据...</span>
+                            </div>
+                            <canvas id="predictionChart"></canvas>
+                        </div>
+
+                        <!-- 预测分析 -->
+                        <div class="p-5 bg-primary/5 rounded-lg border border-primary/20">
+                            <h5 class="font-medium mb-3 text-sm text-primary text-glow">预测分析</h5>
+                            <p class="text-sm text-gray-300 mb-4" id="prediction-analysis">
+                                请选择数据集、地区和预测时长，点击"生成预测结果"查看分析...
+                            </p>
+                            <div class="flex flex-wrap justify-between items-center gap-4">
+                                <div class="text-xs text-gray-400">
+                                    <span class="inline-block w-3 h-3 rounded-full bg-primary/30 mr-2"></span>
+                                    历史数据
+                                    <span class="inline-block w-3 h-3 rounded-full bg-secondary ml-4 mr-2"></span>
+                                    预测数据
+                                </div>
+                                <button class="text-primary text-sm hover:underline flex items-center" id="export-data">
+                                    <i class="fa fa-download mr-2"></i> 导出数据（CSV）
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+    </main>
 
+    <!-- 页脚 -->
+    <footer class="bg-dark/80 backdrop-blur-md border-t border-primary/20 py-16 relative z-10">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+                <div class="animate-slide-up">
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-primary to-secondary flex items-center justify-center neon-border animate-glow">
+                            <i class="fa fa-microchip text-white text-2xl text-glow"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-primary text-glow">数智湖北<span class="text-secondary text-glow-purple">·未来预测</span></h2>
+                    </div>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        运用量子计算与人工智能技术，打造湖北经济社会高质量发展的智能数据引擎，赋能未来决策。
+                    </p>
+                </div>
+
+                <div class="animate-slide-up delay-100">
+                    <h3 class="font-bold text-lg text-gray-100 mb-6">快速链接</h3>
+                    <ul class="space-y-4 text-gray-400 text-sm">
+                        <li><a href="home" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据预测</a></li>
+                        <li><a href="data_center" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据中心</a></li>
+                        <li><a href="report" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 分析报告</a></li>
+                        <li><a href="about" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 关于我们</a></li>
+                        <li><a href="home" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 帮助中心</a></li>
+                    </ul>
+                </div>
+
+                <div class="animate-slide-up delay-200">
+                    <h3 class="font-bold text-lg text-gray-100 mb-6">联系我们</h3>
+                    <ul class="space-y-4 text-gray-400 text-sm">
+                        <li class="flex items-start">
+                            <i class="fa fa-envelope-o text-primary mt-1 mr-3 text-lg"></i>
+                            <span>contact@shuzhi-hubei.com</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-phone text-primary mt-1 mr-3 text-lg"></i>
+                            <span>027-8888-9999</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-map-marker text-primary mt-1 mr-3 text-lg"></i>
+                            <span>武汉市东湖新技术开发区光谷量子中心A座</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-clock-o text-primary mt-1 mr-3 text-lg"></i>
+                            <span>工作日 9:00-18:00（数据实时更新）</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="animate-slide-up delay-300">
+                    <h3 class="font-bold text-lg text-gray-100 mb-6">关注我们</h3>
+                    <div class="flex space-x-4 mb-6">
+                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
+                            <i class="fa fa-weixin text-xl"></i>
+                        </a>
+                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
+                            <i class="fa fa-weibo text-xl"></i>
+                        </a>
+                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
+                            <i class="fa fa-github text-xl"></i>
+                        </a>
+                    </div>
+                    <div class="bg-dark/50 rounded-lg p-4 border border-primary/20">
+                        <p class="text-gray-400 text-sm mb-3">扫码关注公众号</p>
+                        <div class="w-32 h-32 bg-gray-medium rounded flex items-center justify-center">
+                            <i class="fa fa-qrcode text-4xl text-dark"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-primary/10 mt-12 pt-8 text-center text-gray-500 text-sm">
+                <p>© 2025 数智湖北量子数据预测平台 版权所有 | 鄂ICP备12345678号-1 | 数据安全等级：三级等保</p>
+                <div class="flex justify-center space-x-6 mt-4">
+                    <a href="home" class="hover:text-primary transition-colors">隐私政策</a>
+                    <a href="home" class="hover:text-primary transition-colors">服务条款</a>
+                    <a href="home" class="hover:text-primary transition-colors">法律声明</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
     <script>
         // 全局图表实例
         let predictionChart = null;
         let currentPredictionData = null; // 存储当前预测数据用于导出
 
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            loadDataFiles();
-            bindEvents();
+        // 初始化粒子背景
+        particlesJS("particles-js", {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: "#00F0FF" },
+                shape: { type: "circle" },
+                opacity: { value: 0.2, random: true },
+                size: { value: 3, random: true },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: "#00F0FF",
+                    opacity: 0.1,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 0.5,
+                    direction: "none",
+                    random: true,
+                    straight: false,
+                    out_mode: "out",
+                    bounce: false
+                }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: {
+                    onhover: { enable: true, mode: "grab" },
+                    onclick: { enable: true, mode: "push" },
+                    resize: true
+                },
+                modes: {
+                    grab: { distance: 140, line_linked: { opacity: 0.3 } },
+                    push: { particles_nb: 3 }
+                }
+            },
+            retina_detect: true
         });
+
+        // 页面加载完成后请求后端接口获取所有数据
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // 隐藏加载指示器
+                const hideLoading = () => {
+                    document.getElementById('loading-indicator').style.opacity = 0;
+                    setTimeout(() => {
+                        document.getElementById('loading-indicator').style.display = 'none';
+                    }, 500);
+                };
+
+                // 1. 获取核心预测指标数据
+                const coreIndicatorsRes = await fetch('/api/core-indicators');
+                const coreIndicators = await coreIndicatorsRes.json();
+
+                // 2. 获取市州GDP数据
+                const cityGdpRes = await fetch('/api/city-gdp');
+                const cityGdpData = await cityGdpRes.json();
+
+                // 3. 获取重点产业数据
+                const industryRes = await fetch('/api/industries');
+                const industryData = await industryRes.json();
+
+                // 4. 获取民生商品价格数据
+                const priceRes = await fetch('/api/commodity-prices');
+                const priceData = await priceRes.json();
+
+                // 5. 获取教育医疗资源数据
+                const eduMedRes = await fetch('/api/edu-med-resources');
+                const eduMedData = await eduMedRes.json();
+
+                // 更新数据更新时间
+                document.getElementById('update-time').textContent = coreIndicators.update_time;
+
+                // --- 渲染核心指标数据 ---
+                renderCoreIndicators(coreIndicators);
+
+                // --- 渲染市州GDP图表 ---
+                initCityGdpChart(cityGdpData);
+
+                // --- 渲染重点产业数据 ---
+                renderIndustries(industryData);
+
+                // --- 渲染民生商品价格图表 ---
+                initPriceChart(priceData);
+
+                // --- 渲染教育医疗资源数据 ---
+                renderEduMed(eduMedData);
+
+                // --- 初始化自定义预测功能 ---
+                initCustomPrediction();
+
+                // 隐藏加载指示器
+                hideLoading();
+
+            } catch (error) {
+                console.error('数据请求失败:', error);
+                document.getElementById('loading-indicator').innerHTML = `
+                    <i class="fa fa-exclamation-circle text-danger mr-2"></i>
+                    <span class="text-danger text-sm">数据加载失败，请刷新页面重试</span>
+                `;
+            }
+        });
+
+        // --- 核心指标渲染函数 ---
+        function renderCoreIndicators(data) {
+            // GDP
+            document.getElementById('gdp-value').textContent = `${data.gdp.value}%`;
+            document.getElementById('gdp-change').textContent = data.gdp.change;
+            document.getElementById('gdp-desc').textContent = data.gdp.desc;
+            initSmallChart('gdpChart', data.gdp.labels, data.gdp.data, '#00F0FF');
+
+            // 失业率
+            document.getElementById('unemployment-value').textContent = `${data.unemployment.value}%`;
+            document.getElementById('unemployment-change').textContent = data.unemployment.change;
+            document.getElementById('unemployment-desc').textContent = data.unemployment.desc;
+            initSmallChart('unemploymentChart', data.unemployment.labels, data.unemployment.data, '#7928CA');
+
+            // 新能源汽车
+            document.getElementById('ev-value').textContent = `${data.ev.value}%`;
+            document.getElementById('ev-change').textContent = data.ev.change;
+            document.getElementById('ev-desc').textContent = data.ev.desc;
+            initSmallChart('evChart', data.ev.labels, data.ev.data, '#FF0080');
+
+            // PM2.5
+            document.getElementById('pm25-value').textContent = `${data.pm25.value}μg/m³`;
+            document.getElementById('pm25-change').textContent = data.pm25.change;
+            document.getElementById('pm25-desc').textContent = data.pm25.desc;
+            initSmallChart('pm25Chart', data.pm25.labels, data.pm25.data, '#FFDD00');
+        }
+
+        // --- 小型趋势图初始化函数 ---
+        function initSmallChart(domId, labels, data, color) {
+            const ctx = document.getElementById(domId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: `${color}20`,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false, grid: { display: false } },
+                        y: { display: false, grid: { display: false } }
+                    },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+        }
+
+        // --- 市州GDP图表初始化 ---
+        function initCityGdpChart(data) {
+            const ctx = document.getElementById('cityGdpChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.cities,
+                    datasets: [
+                        {
+                            label: '2023实际值',
+                            data: data.actual2023,
+                            backgroundColor: 'rgba(0, 240, 255, 0.6)',
+                            borderRadius: 4,
+                            borderWidth: 0
+                        },
+                        {
+                            label: '2024预测值',
+                            data: data.pred2024,
+                            backgroundColor: 'rgba(121, 40, 202, 0.8)',
+                            borderRadius: 4,
+                            borderWidth: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 8,
+                                color: '#E2E8F0',
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw + '%';
+                                }
+                            },
+                            backgroundColor: 'rgba(14, 21, 37, 0.9)',
+                            borderColor: 'rgba(0, 240, 255, 0.5)',
+                            borderWidth: 1,
+                            padding: 12,
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 12 }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: { color: '#94A3B8', font: { size: 11 } }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            min: 4,
+                            grid: { color: 'rgba(0, 240, 255, 0.1)', drawBorder: false },
+                            ticks: {
+                                color: '#94A3B8',
+                                font: { size: 11 },
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 2500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+        }
+
+        // --- 重点产业渲染 ---
+        function renderIndustries(data) {
+            const container = document.getElementById('industry-container');
+            const colorMap = {
+                'primary': '#00F0FF',
+                'secondary': '#7928CA',
+                'accent': '#FF0080',
+                'success': '#39FF14'
+            };
+
+            container.innerHTML = data.map(ind => `
+                <div class="animate-fade-in delay-${data.indexOf(ind) * 100}">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm text-gray-300">${ind.name}</span>
+                        <span class="text-sm font-medium text-${ind.color} text-glow">${ind.growth}</span>
+                    </div>
+                    <div class="w-full bg-gray-light rounded-full h-2.5 overflow-hidden">
+                        <div class="h-2.5 rounded-full" style="width: ${ind.percent}%; background-color: ${colorMap[ind.color]}; box-shadow: 0 0 8px ${colorMap[ind.color]}80;"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            // 产业分析
+            document.getElementById('industry-analysis').textContent =
+                "光电子产业预计将保持高速增长，主要受益于武汉'光谷'持续的技术突破和产业集群效应。汽车产业在新能源转型推动下，增速有望回升，生物医药与装备制造产业将稳步发展。";
+        }
+
+        // --- 民生商品价格图表初始化 ---
+        function initPriceChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.months,
+                    datasets: [
+                        {
+                            label: '猪肉',
+                            data: data.pork,
+                            borderColor: '#FF073A',
+                            backgroundColor: 'rgba(255, 7, 58, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#FF073A'
+                        },
+                        {
+                            label: '大米',
+                            data: data.rice,
+                            borderColor: '#00F0FF',
+                            backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#00F0FF'
+                        },
+                        {
+                            label: '食用油',
+                            data: data.oil,
+                            borderColor: '#39FF14',
+                            backgroundColor: 'rgba(57, 255, 20, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#39FF14'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 8,
+                                color: '#E2E8F0',
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(14, 21, 37, 0.9)',
+                            borderColor: 'rgba(0, 240, 255, 0.5)',
+                            borderWidth: 1,
+                            padding: 12,
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 12 },
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ¥' + context.raw;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: { color: '#94A3B8', font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(0, 240, 255, 0.1)', drawBorder: false },
+                            ticks: {
+                                color: '#94A3B8',
+                                font: { size: 11 },
+                                callback: function(value) {
+                                    return '¥' + value;
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 2500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+        }
+
+        // --- 教育医疗资源渲染 ---
+        function renderEduMed(data) {
+            // 学位缺口
+            const eduContainer = document.getElementById('edu-gap-container');
+            eduContainer.innerHTML = data.edu_gap.map((item, index) => `
+                <div class="animate-fade-in delay-${index * 100}">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-xs text-gray-300">${item.city}</span>
+                        <span class="text-xs font-medium text-${item.color}">${item.gap}</span>
+                    </div>
+                    <div class="w-full bg-gray-light rounded-full h-2 overflow-hidden">
+                        <div class="h-2 rounded-full" style="width: ${item.percent}%; background-color: var(--tw-color-${item.color}); box-shadow: 0 0 6px var(--tw-color-${item.color})80;"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            // 就诊高峰
+            const medicalContainer = document.getElementById('medical-peak-container');
+            medicalContainer.innerHTML = data.medical_peak.map((item, index) => `
+                <div class="animate-fade-in delay-${index * 100}">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-xs text-gray-300">${item.name}</span>
+                        <span class="text-xs font-medium text-${item.color}">${item.period}</span>
+                    </div>
+                    <div class="w-full bg-gray-light rounded-full h-2 overflow-hidden">
+                        <div class="h-2 rounded-full" style="width: ${item.percent}%; background-color: var(--tw-color-${item.color}); box-shadow: 0 0 6px var(--tw-color-${item.color})80;"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- 自定义预测功能相关 ---
+        function initCustomPrediction() {
+            loadDataFiles();
+            bindPredictionEvents();
+        }
 
         // 加载数据文件列表
         async function loadDataFiles() {
@@ -883,8 +1340,8 @@
             }
         }
 
-        // 绑定事件
-        function bindEvents() {
+        // 绑定预测相关事件
+        function bindPredictionEvents() {
             // 文件选择变化时加载地区
             document.getElementById('data-file-select').addEventListener('change', loadRegions);
 
@@ -894,918 +1351,6 @@
             // 导出数据按钮点击事件
             document.getElementById('export-data').addEventListener('click', exportToCSV);
         }
-    </script>
-</body>
-</html>
-
-    <!-- 页脚 -->
-    <footer class="bg-dark/80 backdrop-filter: blur(8px) border-t border-primary/20 py-16 relative z-10">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
-                <div class="animate-slide-up">
-                    <div class="flex items-center space-x-3 mb-6">
-                        <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-primary to-secondary flex items-center justify-center neon-border animate-glow">
-                            <i class="fa fa-microchip text-white text-2xl text-glow"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-primary text-glow">数智湖北<span class="text-secondary text-glow-purple">·未来预测</span></h2>
-                    </div>
-                    <p class="text-gray-400 text-sm leading-relaxed">
-                        运用量子计算与人工智能技术，打造湖北经济社会高质量发展的智能数据引擎，赋能未来决策。
-                    </p>
-                </div>
-
-                <div class="animate-slide-up delay-100">
-                    <h3 class="font-bold text-lg text-gray-100 mb-6">快速链接</h3>
-                    <ul class="space-y-4 text-gray-400 text-sm">
-                        <li><a href="home" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据预测</a></li>
-                        <li><a href="data_center" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 数据中心</a></li>
-                        <li><a href="report" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 分析报告</a></li>
-                        <li><a href="about" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 关于我们</a></li>
-                        <li><a href="home" class="hover:text-primary transition-colors flex items-center"><i class="fa fa-angle-right text-primary mr-2"></i> 帮助中心</a></li>
-                    </ul>
-                </div>
-
-                <div class="animate-slide-up delay-200">
-                    <h3 class="font-bold text-lg text-gray-100 mb-6">联系我们</h3>
-                    <ul class="space-y-4 text-gray-400 text-sm">
-                        <li class="flex items-start">
-                            <i class="fa fa-envelope-o text-primary mt-1 mr-3 text-lg"></i>
-                            <span>contact@shuzhi-hubei.com</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fa fa-phone text-primary mt-1 mr-3 text-lg"></i>
-                            <span>027-8888-9999</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fa fa-map-marker text-primary mt-1 mr-3 text-lg"></i>
-                            <span>武汉市东湖新技术开发区光谷量子中心A座</span>
-                        </li>
-                        <li class="flex items-start">
-                            <i class="fa fa-clock-o text-primary mt-1 mr-3 text-lg"></i>
-                            <span>工作日 9:00-18:00（数据实时更新）</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="animate-slide-up delay-300">
-                    <h3 class="font-bold text-lg text-gray-100 mb-6">关注我们</h3>
-                    <div class="flex space-x-4 mb-6">
-                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
-                            <i class="fa fa-weixin text-xl"></i>
-                        </a>
-                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
-                            <i class="fa fa-weibo text-xl"></i>
-                        </a>
-                        <a href="home" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary transition-all neon-border">
-                            <i class="fa fa-github text-xl"></i>
-                        </a>
-                    </div>
-                    <div class="bg-dark/50 rounded-lg p-4 border border-primary/20">
-                        <p class="text-gray-400 text-sm mb-3">扫码关注公众号</p>
-                        <div class="w-32 h-32 bg-gray-medium rounded flex items-center justify-center">
-                            <i class="fa fa-qrcode text-4xl text-dark"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="border-t border-primary/10 mt-12 pt-8 text-center text-gray-500 text-sm">
-                <p>© 2025 数智湖北量子数据预测平台 版权所有 | 鄂ICP备12345678号-1 | 数据安全等级：三级等保</p>
-                <div class="flex justify-center space-x-6 mt-4">
-                    <a href="home" class="hover:text-primary transition-colors">隐私政策</a>
-                    <a href="home" class="hover:text-primary transition-colors">服务条款</a>
-                    <a href="home" class="hover:text-primary transition-colors">法律声明</a>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <!-- JavaScript -->
-    <script>
-        // 初始化粒子背景
-        particlesJS("particles-js", {
-            particles: {
-                number: { value: 80, density: { enable: true, value_area: 800 } },
-                color: { value: "#00F0FF" },
-                shape: { type: "circle" },
-                opacity: { value: 0.2, random: true },
-                size: { value: 3, random: true },
-                line_linked: {
-                    enable: true,
-                    distance: 150,
-                    color: "#00F0FF",
-                    opacity: 0.1,
-                    width: 1
-                },
-                move: {
-                    enable: true,
-                    speed: 0.5,
-                    direction: "none",
-                    random: true,
-                    straight: false,
-                    out_mode: "out",
-                    bounce: false
-                }
-            },
-            interactivity: {
-                detect_on: "canvas",
-                events: {
-                    onhover: { enable: true, mode: "grab" },
-                    onclick: { enable: true, mode: "push" },
-                    resize: true
-                },
-                modes: {
-                    grab: { distance: 140, line_linked: { opacity: 0.3 } },
-                    push: { particles_nb: 3 }
-                }
-            },
-            retina_detect: true
-        });
-
-        // 页面加载完成后请求后端接口获取所有数据
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                // 隐藏加载指示器
-                const hideLoading = () => {
-                    document.getElementById('loading-indicator').style.opacity = 0;
-                    setTimeout(() => {
-                        document.getElementById('loading-indicator').style.display = 'none';
-                    }, 500);
-                };
-
-                // 1. 获取核心预测指标数据
-                const coreIndicatorsRes = await fetch('/api/core-indicators');
-                const coreIndicators = await coreIndicatorsRes.json();
-
-                // 2. 获取市州GDP数据
-                const cityGdpRes = await fetch('/api/city-gdp');
-                const cityGdpData = await cityGdpRes.json();
-
-                // 3. 获取重点产业数据
-                const industryRes = await fetch('/api/industries');
-                const industryData = await industryRes.json();
-
-                // 4. 获取民生商品价格数据
-                const priceRes = await fetch('/api/commodity-prices');
-                const priceData = await priceRes.json();
-
-                // 5. 获取教育医疗资源数据
-                const eduMedRes = await fetch('/api/edu-med-resources');
-                const eduMedData = await eduMedRes.json();
-
-                // 6. 获取自定义预测默认数据
-                const customPredRes = await fetch('/api/custom-prediction', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({indicator: '新能源汽车产量', period: '未来1年', subsidy: 50})
-                });
-                const customPredData = await customPredRes.json();
-
-                // 7. 获取模型准确率数据
-                const accuracyRes = await fetch('/api/model-accuracy');
-                const accuracyData = await accuracyRes.json();
-
-                // 8. 获取模型说明数据
-                const modelInfoRes = await fetch('/api/model-info');
-                const modelInfoData = await modelInfoRes.json();
-
-                // 更新数据更新时间
-                document.getElementById('update-time').textContent = coreIndicators.update_time;
-
-                // --- 渲染核心指标数据 ---
-                renderCoreIndicators(coreIndicators);
-
-                // --- 渲染市州GDP图表 ---
-                initCityGdpChart(cityGdpData);
-
-                // --- 渲染重点产业数据 ---
-                renderIndustries(industryData);
-
-                // --- 渲染民生商品价格图表 ---
-                initPriceChart(priceData);
-
-                // --- 渲染教育医疗资源数据 ---
-                renderEduMed(eduMedData);
-
-                // --- 渲染自定义预测图表 ---
-                initCustomPredChart(customPredData);
-
-                // --- 渲染模型准确率图表 ---
-                initAccuracyChart(accuracyData);
-
-                // --- 渲染模型说明数据 ---
-                renderModelInfo(modelInfoData);
-
-                // --- 绑定自定义预测按钮事件 ---
-                bindCustomPredictionEvent();
-
-                // --- 绑定补贴滑块事件 ---
-                bindSubsidySliderEvent();
-
-                // 隐藏加载指示器
-                hideLoading();
-
-            } catch (error) {
-                console.error('数据请求失败:', error);
-                document.getElementById('loading-indicator').innerHTML = `
-                    <i class="fa fa-exclamation-circle text-danger mr-2"></i>
-                    <span class="text-danger text-sm">数据加载失败，请刷新页面重试</span>
-                `;
-            }
-        });
-
-        // --- 核心指标渲染函数 ---
-        function renderCoreIndicators(data) {
-            // GDP
-            document.getElementById('gdp-value').textContent = `${data.gdp.value}%`;
-            document.getElementById('gdp-change').textContent = data.gdp.change;
-            document.getElementById('gdp-desc').textContent = data.gdp.desc;
-            initSmallChart('gdpChart', data.gdp.labels, data.gdp.data, '#00F0FF');
-
-            // 失业率
-            document.getElementById('unemployment-value').textContent = `${data.unemployment.value}%`;
-            document.getElementById('unemployment-change').textContent = data.unemployment.change;
-            document.getElementById('unemployment-desc').textContent = data.unemployment.desc;
-            initSmallChart('unemploymentChart', data.unemployment.labels, data.unemployment.data, '#7928CA');
-
-            // 新能源汽车
-            document.getElementById('ev-value').textContent = `${data.ev.value}%`;
-            document.getElementById('ev-change').textContent = data.ev.change;
-            document.getElementById('ev-desc').textContent = data.ev.desc;
-            initSmallChart('evChart', data.ev.labels, data.ev.data, '#FF0080');
-
-            // PM2.5
-            document.getElementById('pm25-value').textContent = `${data.pm25.value}μg/m³`;
-            document.getElementById('pm25-change').textContent = data.pm25.change;
-            document.getElementById('pm25-desc').textContent = data.pm25.desc;
-            initSmallChart('pm25Chart', data.pm25.labels, data.pm25.data, '#FFDD00');
-        }
-
-        // --- 小型趋势图初始化函数 ---
-        function initSmallChart(domId, labels, data, color) {
-            const ctx = document.getElementById(domId).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        borderColor: color,
-                        backgroundColor: `${color}20`,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false, grid: { display: false } },
-                        y: { display: false, grid: { display: false } }
-                    },
-                    animation: {
-                        duration: 2000,
-                        easing: 'easeOutQuart'
-                    }
-                }
-            });
-        }
-
-        // --- 市州GDP图表初始化 ---
-        function initCityGdpChart(data) {
-            const ctx = document.getElementById('cityGdpChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.cities,
-                    datasets: [
-                        {
-                            label: '2023实际值',
-                            data: data.actual2023,
-                            backgroundColor: 'rgba(0, 240, 255, 0.6)',
-                            borderRadius: 4,
-                            borderWidth: 0
-                        },
-                        {
-                            label: '2024预测值',
-                            data: data.pred2024,
-                            backgroundColor: 'rgba(121, 40, 202, 0.8)',
-                            borderRadius: 4,
-                            borderWidth: 0
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                boxWidth: 8,
-                                color: '#E2E8F0',
-                                font: { size: 11 }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + context.raw + '%';
-                                }
-                            },
-                            backgroundColor: 'rgba(14, 21, 37, 0.9)',
-                            borderColor: 'rgba(0, 240, 255, 0.5)',
-                            borderWidth: 1,
-                            padding: 12,
-                            titleFont: { size: 13 },
-                            bodyFont: { size: 12 }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false, drawBorder: false },
-                            ticks: { color: '#94A3B8', font: { size: 11 } }
-                        },
-                        y: {
-                            beginAtZero: false,
-                            min: 4,
-                            grid: { color: 'rgba(0, 240, 255, 0.1)', drawBorder: false },
-                            ticks: {
-                                color: '#94A3B8',
-                                font: { size: 11 },
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        }
-                    },
-                    animation: {
-                        duration: 2500,
-                        easing: 'easeOutQuart'
-                    }
-                }
-            });
-        }
-
-        // --- 重点产业渲染 ---
-        function renderIndustries(data) {
-            const container = document.getElementById('industry-container');
-            const colorMap = {
-                'primary': '#00F0FF',
-                'secondary': '#7928CA',
-                'accent': '#FF0080',
-                'success': '#39FF14'
-            };
-
-            container.innerHTML = data.map(ind => `
-                <div class="animate-fade-in delay-${data.indexOf(ind) * 100}">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-sm text-gray-300">${ind.name}</span>
-                        <span class="text-sm font-medium text-${ind.color} text-glow">${ind.growth}</span>
-                    </div>
-                    <div class="w-full bg-gray-light rounded-full h-2.5 overflow-hidden">
-                        <div class="h-2.5 rounded-full" style="width: ${ind.percent}%; background-color: ${colorMap[ind.color]}; box-shadow: 0 0 8px ${colorMap[ind.color]}80;"></div>
-                    </div>
-                </div>
-            `).join('');
-
-            // 产业分析
-            document.getElementById('industry-analysis').textContent =
-                "光电子产业预计将保持高速增长，主要受益于武汉'光谷'持续的技术突破和产业集群效应。汽车产业在新能源转型推动下，增速有望回升，生物医药与装备制造产业将稳步发展。";
-        }
-
-        // --- 民生商品价格图表初始化 ---
-        function initPriceChart(data) {
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.months,
-                    datasets: [
-                        {
-                            label: '猪肉',
-                            data: data.pork,
-                            borderColor: '#FF073A',
-                            backgroundColor: 'rgba(255, 7, 58, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#FF073A'
-                        },
-                        {
-                            label: '大米',
-                            data: data.rice,
-                            borderColor: '#00F0FF',
-                            backgroundColor: 'rgba(0, 240, 255, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#00F0FF'
-                        },
-                        {
-                            label: '食用油',
-                            data: data.oil,
-                            borderColor: '#39FF14',
-                            backgroundColor: 'rgba(57, 255, 20, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#39FF14'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                boxWidth: 8,
-                                color: '#E2E8F0',
-                                font: { size: 11 }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(14, 21, 37, 0.9)',
-                            borderColor: 'rgba(0, 240, 255, 0.5)',
-                            borderWidth: 1,
-                            padding: 12,
-                            titleFont: { size: 13 },
-                            bodyFont: { size: 12 },
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ¥' + context.raw;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false, drawBorder: false },
-                            ticks: { color: '#94A3B8', font: { size: 11 } }
-                        },
-                        y: {
-                            grid: { color: 'rgba(0, 240, 255, 0.1)', drawBorder: false },
-                            ticks: {
-                                color: '#94A3B8',
-                                font: { size: 11 },
-                                callback: function(value) {
-                                    return '¥' + value;
-                                }
-                            }
-                        }
-                    },
-                    animation: {
-                        duration: 2500,
-                        easing: 'easeOutQuart'
-                    }
-                }
-            });
-        }
-
-        // --- 教育医疗资源渲染 ---
-        function renderEduMed(data) {
-            // 学位缺口
-            const eduContainer = document.getElementById('edu-gap-container');
-            eduContainer.innerHTML = data.edu_gap.map((item, index) => `
-                <div class="animate-fade-in delay-${index * 100}">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-xs text-gray-300">${item.city}</span>
-                        <span class="text-xs font-medium text-${item.color}">${item.gap}</span>
-                    </div>
-                    <div class="w-full bg-gray-light rounded-full h-2 overflow-hidden">
-                        <div class="h-2 rounded-full" style="width: ${item.percent}%; background-color: var(--tw-color-${item.color}); box-shadow: 0 0 6px var(--tw-color-${item.color})80;"></div>
-                    </div>
-                </div>
-            `).join('');
-
-            // 就诊高峰
-            const medicalContainer = document.getElementById('medical-peak-container');
-            medicalContainer.innerHTML = data.medical_peak.map((item, index) => `
-                <div class="animate-fade-in delay-${index * 100}">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-xs text-gray-300">${item.name}</span>
-                        <span class="text-xs font-medium text-${item.color}">${item.period}</span>
-                    </div>
-                    <div class="w-full bg-gray-light rounded-full h-2 overflow-hidden">
-                        <div class="h-2 rounded-full" style="width: ${item.percent}%; background-color: var(--tw-color-${item.color}); box-shadow: 0 0 6px var(--tw-color-${item.color})80;"></div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // --- 自定义预测图表初始化 ---
-        function initCustomPredChart(data) {
-            const ctx = document.getElementById('customPredictionChart').getContext('2d');
-
-            // 销毁已有图表（避免重复渲染）
-            if (window.customChart) {
-                window.customChart.destroy();
-            }
-
-            window.customChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.labels,
-                    datasets: [
-                        {
-                            label: '历史数据',
-                            data: data.history_data,
-                            borderColor: 'rgba(0, 240, 255, 0.5)',
-                            backgroundColor: 'rgba(0, 240, 255, 0.05)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 4,
-                            pointBackgroundColor: 'rgba(0, 240, 255, 0.8)'
-                        },
-                        {
-                            label: '预测数据',
-                            data: data.pred_data,
-                            borderColor: '#00F0FF',
-                            borderWidth: 3,
-                            borderDash: [5, 5],
-                            tension: 0.4,
-                            fill: false,
-                            pointRadius: 5,
-                            pointBackgroundColor: '#00F0FF',
-                            pointBorderColor: '#0A0E17',
-                            pointBorderWidth: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                boxWidth: 8,
-                                color: '#E2E8F0',
-                                font: { size: 11 }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(14, 21, 37, 0.9)',
-                            borderColor: 'rgba(0, 240, 255, 0.5)',
-                            borderWidth: 1,
-                            padding: 12,
-                            titleFont: { size: 13 },
-                            bodyFont: { size: 12 },
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + context.raw + '%';
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false, drawBorder: false },
-                            ticks: { color: '#94A3B8', font: { size: 11 } }
-                        },
-                        y: {
-                            grid: { color: 'rgba(0, 240, 255, 0.1)', drawBorder: false },
-                            ticks: {
-                                color: '#94A3B8',
-                                font: { size: 11 },
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        }
-                    },
-                    animation: {
-                        duration: 2000,
-                        easing: 'easeOutQuart'
-                    }
-                }
-            });
-
-            // 更新分析文本
-            document.getElementById('custom-analysis').textContent = data.analysis;
-        }
-
-        // --- 模型准确率图表初始化 ---
-        function initAccuracyChart(data) {
-            const ctx = document.getElementById('accuracyChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: data.indicators,
-                    datasets: [{
-                        label: '预测准确率',
-                        data: data.accuracy,
-                        backgroundColor: 'rgba(0, 240, 255, 0.2)',
-                        borderColor: '#00F0FF',
-                        borderWidth: 2,
-                        pointBackgroundColor: '#00F0FF',
-                        pointBorderColor: '#0A0E17',
-                        pointBorderWidth: 2,
-                        pointRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                boxWidth: 8,
-                                color: '#E2E8F0',
-                                font: { size: 11 }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(14, 21, 37, 0.9)',
-                            borderColor: 'rgba(0, 240, 255, 0.5)',
-                            borderWidth: 1,
-                            padding: 12,
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + context.raw + '%';
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        r: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                color: '#94A3B8',
-                                font: { size: 10 },
-                                stepSize: 20,
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 240, 255, 0.1)'
-                            },
-                            angleLines: {
-                                color: 'rgba(0, 240, 255, 0.2)'
-                            },
-                            pointLabels: {
-                                color: '#E2E8F0',
-                                font: { size: 11 }
-                            }
-                        }
-                    },
-                    animation: {
-                        duration: 3000,
-                        easing: 'easeOutQuart'
-                    }
-                }
-            });
-        }
-
-        // --- 模型说明渲染 ---
-        function renderModelInfo(data) {
-            // 数据源
-            const sourcesContainer = document.getElementById('data-sources');
-            sourcesContainer.innerHTML = data.data_sources.map((source, index) => `
-                <li class="flex items-start animate-fade-in delay-${index * 100}">
-                    <i class="fa fa-check-circle text-primary mt-1 mr-3"></i>
-                    <span>${source}</span>
-                </li>
-            `).join('');
-        }
-
-        // --- 绑定自定义预测按钮事件 ---
-        function bindCustomPredictionEvent() {
-            const btn = document.getElementById('generate-prediction');
-            btn.addEventListener('click', async function() {
-                // 添加加载状态
-                btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> 计算中...';
-                btn.disabled = true;
-
-                try {
-                    // 获取参数
-                    const indicator = document.getElementById('custom-indicator').value;
-                    const period = document.getElementById('custom-period').value;
-                    const subsidy = parseInt(document.getElementById('custom-subsidy').value);
-
-                    // 请求预测数据
-                    const res = await fetch('/api/custom-prediction', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({indicator, period, subsidy})
-                    });
-                    const data = await res.json();
-
-                    // 更新图表
-                    initCustomPredChart(data);
-
-                } catch (error) {
-                    document.getElementById('custom-analysis').textContent = '预测计算失败，请重试！';
-                    console.error('自定义预测失败:', error);
-                } finally {
-                    // 恢复按钮状态
-                    btn.innerHTML = '生成预测结果 <i class="fa fa-calculator ml-2"></i>';
-                    btn.disabled = false;
-                }
-            });
-        }
-
-        // --- 绑定补贴滑块事件 ---
-        function bindSubsidySliderEvent() {
-            const slider = document.getElementById('custom-subsidy');
-            const valueText = document.getElementById('subsidy-value');
-
-            slider.addEventListener('input', function() {
-                const value = parseInt(this.value);
-                let text = '';
-
-                if (value < 30) {
-                    text = `大幅减少 (${value}%)`;
-                } else if (value < 70) {
-                    text = `基准水平 (${value}%)`;
-                } else {
-                    text = `大幅增加 (${value}%)`;
-                }
-
-                valueText.textContent = text;
-            });
-        }
-        // --- 历史真实数据渲染相关函数 ---
-        // 1. 初始化历史数据（页面加载时调用）
-        async function initHistoryData() {
-            try {
-                // 获取默认数据（空气污染物+2023年度）
-                const dataType = document.getElementById('history-data-type').value;
-                const timeRange = document.getElementById('history-time-range').value;
-                const historyData = await fetchHistoryData(dataType, timeRange);
-
-                // 渲染数据概览
-                renderHistoryOverview(historyData.overview);
-                // 渲染趋势图表
-                renderHistoryTrendChart(historyData.chartData);
-                // 渲染详细表格
-                renderHistoryTable(historyData.tableHeader, historyData.tableData);
-            } catch (error) {
-                console.error('历史数据加载失败:', error);
-                document.getElementById('history-overview-container').innerHTML = `
-                    <div class="text-danger text-sm">数据加载失败，请重试</div>
-                `;
-            }
-        }
-
-        // 2. 请求后端历史数据接口
-        async function fetchHistoryData(dataType, timeRange) {
-            const res = await fetch('/api/history-data', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({dataType, timeRange}) // 传数据类型和时间范围给后端
-            });
-            if (!res.ok) throw new Error('接口请求失败');
-            return await res.json(); // 后端返回：overview（概览）、chartData（图表）、tableHeader（表头）、tableData（表格数据）
-        }
-
-        // 3. 渲染数据概览
-        function renderHistoryOverview(overview) {
-            const container = document.getElementById('history-overview-container');
-            // 概览数据格式（由后端定义，示例）：
-            // { recordCount: 365, stationCount: 24, timeSpan: "2023-01-01 至 2023-12-31", avgQuality: "良好" }
-            container.innerHTML = `
-                <div class="flex justify-between items-center pb-3 border-b border-primary/20">
-                    <span class="text-gray-200">数据记录数</span>
-                    <span class="text-primary font-medium">${overview.recordCount || 0}</span>
-                </div>
-                <div class="flex justify-between items-center pb-3 border-b border-primary/20">
-                    <span class="text-gray-200">监测站点数</span>
-                    <span class="text-primary font-medium">${overview.stationCount || 0}</span>
-                </div>
-                <div class="flex justify-between items-center pb-3 border-b border-primary/20">
-                    <span class="text-gray-200">时间跨度</span>
-                    <span class="text-primary font-medium">${overview.timeSpan || '暂无数据'}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-gray-200">平均质量等级</span>
-                    <span class="text-success font-medium">${overview.avgQuality || '未知'}</span>
-                </div>
-            `;
-        }
-
-        // 4. 渲染历史趋势图表（优化后：支持动态图表类型）
-        function renderHistoryTrendChart(chartData) {
-            const ctx = document.getElementById('history-trend-chart').getContext('2d');
-
-            // 销毁已有图表（避免重复渲染）
-            if (window.historyChart) window.historyChart.destroy();
-
-            // 动态获取图表类型（优先从datasets取，默认折线图）
-            const chartType = chartData.datasets?.[0]?.type || 'line';
-
-            window.historyChart = new Chart(ctx, {
-                type: chartType,  // 动态类型（line/bar/pie）
-                data: {
-                    labels: chartData.labels || [],
-                    datasets: chartData.datasets || []
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: chartType === 'pie' ? 'right' : 'top',  // 饼图图例放右侧
-                            labels: { color: '#E2E8F0', font: { size: 11 } }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(14, 21, 37, 0.9)',
-                            borderColor: 'rgba(0, 240, 255, 0.5)',
-                            borderWidth: 1
-                        }
-                    },
-                    scales: chartType !== 'pie' ? {  // 饼图不需要坐标轴
-                        x: { grid: { color: 'rgba(0, 240, 255, 0.1)' }, ticks: { color: '#94A3B8' } },
-                        y: { grid: { color: 'rgba(0, 240, 255, 0.1)' }, ticks: { color: '#94A3B8' } }
-                    } : {},
-                    animation: { duration: 2000, easing: 'easeOutQuart' }
-                }
-            });
-        }
-
-        // 5. 渲染详细数据表格
-        function renderHistoryTable(tableHeader, tableData) {
-            const headerContainer = document.getElementById('history-table-header');
-            const bodyContainer = document.getElementById('history-table-body');
-
-            // 渲染表头（示例表头：时间、PM2.5、臭氧、可吸入物、站点名称）
-            headerContainer.innerHTML = tableHeader.map(title => `
-                <th scope="col" class="px-6 py-3">${title}</th>
-            `).join('');
-
-            // 渲染表格数据（每行数据对应表头）
-            bodyContainer.innerHTML = tableData.map(row => `
-                <tr class="bg-dark/20 border-b border-primary/10 hover:bg-dark/40 transition-colors">
-                    ${row.map(cell => `
-                        <td class="px-6 py-4 text-gray-100">${cell}</td>
-                    `).join('')}
-                </tr>
-            `).join('');
-        }
-
-        // 6. 绑定数据类型/时间范围切换事件（下拉框变化时重新加载数据）
-        function bindHistoryDataEvents() {
-            const typeSelect = document.getElementById('history-data-type');
-            const timeSelect = document.getElementById('history-time-range');
-
-            // 切换数据类型或时间范围时，重新请求数据并渲染
-            [typeSelect, timeSelect].forEach(select => {
-                select.addEventListener('change', async function() {
-                    const dataType = typeSelect.value;
-                    const timeRange = timeSelect.value;
-
-                    // 显示加载状态
-                    document.getElementById('history-overview-container').innerHTML = `
-                        <div class="text-primary text-sm">加载中...</div>
-                    `;
-
-                    try {
-                        const historyData = await fetchHistoryData(dataType, timeRange);
-                        renderHistoryOverview(historyData.overview);
-                        renderHistoryTrendChart(historyData.chartData);
-                        renderHistoryTable(historyData.tableHeader, historyData.tableData);
-                    } catch (error) {
-                        document.getElementById('history-overview-container').innerHTML = `
-                            <div class="text-danger text-sm">数据加载失败，请重试</div>
-                        `;
-                    }
-                });
-            });
-        }
-
-        // --- 在页面初始化时调用历史数据相关函数 ---
-        // 在原有 init 逻辑的最后（hideLoading() 之后）添加：
-        // 初始化历史数据
-        initHistoryData();
-        // 绑定历史数据切换事件
-        bindHistoryDataEvents();
-        // --- 导航栏滚动效果 ---
-        window.addEventListener('scroll', function() {
-            const header = document.querySelector('header');
-            if (window.scrollY > 50) {
-                header.classList.add('py-2', 'shadow-lg');
-                header.classList.remove('py-3');
-            } else {
-                header.classList.add('py-3');
-                header.classList.remove('py-2', 'shadow-lg');
-            }
-        });
     </script>
 </body>
 </html>

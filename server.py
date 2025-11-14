@@ -500,16 +500,9 @@ def get_edu_med_resources():
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+# 保留原有所有导入和配置，新增/修改以下内容
 
-# 尝试导入pandas，兼容无pandas环境
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
-    logger.warning("未检测到pandas库，部分数据处理功能可能受限")
-
-
-# -------------------------- 工具函数 --------------------------
+# -------------------------- 工具函数（新增/修改）--------------------------
 def parse_time_to_ym(s):
     """将多种时间格式转换为"XXXX-XX"格式，增强兼容性"""
     if not s:
@@ -640,7 +633,7 @@ def fill_missing_data(data_list):
     prev_val = None
 
     for val in data_list:
-        if val is None or val == 0 or pd.isna(val):
+        if val is None or val == 0 or (pd is not None and pd.isna(val)):
             # 如果有前值，基于前值生成合理波动
             if prev_val is not None:
                 # 降低波动范围至3-8%，避免异常值
@@ -671,7 +664,6 @@ def fill_missing_data(data_list):
     return filled_data
 
 
-# -------------------------- 数据处理函数 --------------------------
 def load_historical_data(filename, region):
     """加载指定文件和地区的历史数据，补充缺失值并确保数据有合理波动"""
     try:
@@ -785,7 +777,7 @@ def load_historical_data(filename, region):
         return {"error": str(e)}, 500
 
 
-# -------------------------- API接口 --------------------------
+# -------------------------- 自定义预测API接口（新增）--------------------------
 @app.route('/api/data-files', methods=['GET'])
 def list_data_files():
     """获取包含时间属性的可用数据文件列表"""
@@ -872,8 +864,7 @@ def predict_future():
             return jsonify(historical_data), status
 
         # 检查历史数据是否有效
-        if not historical_data['labels'] or not historical_data['datasets'] or not historical_data['datasets'][0][
-            'data']:
+        if not historical_data['labels'] or not historical_data['datasets'] or not historical_data['datasets'][0]['data']:
             return jsonify({"error": "历史数据不足，无法进行预测"}), 400
 
         # 生成预测数据（基于历史数据的模拟，添加合理波动）
@@ -950,24 +941,6 @@ def predict_future():
         logger.error(f"预测失败: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-
-# -------------------------- 静态文件路由 --------------------------
-@app.route('/')
-def serve_index():
-    return send_from_directory(app.static_folder, 'index.html')
-
-
-@app.route('/<path:path>')
-def serve_static(path):
-    return send_from_directory(app.static_folder, path)
-
-
-# -------------------------- 启动服务器 --------------------------
-if __name__ == '__main__':
-    data_dir = os.path.join(os.path.dirname(__file__), 'data')
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    app.run(debug=True, host='0.0.0.0', port=5000)
 # === 9️⃣ 模型说明接口 ===
 @app.route('/api/model-info', methods=['GET'])
 def get_model_info():
