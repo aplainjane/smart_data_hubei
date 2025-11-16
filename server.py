@@ -6,6 +6,18 @@ import csv
 import logging
 import re
 import random
+import requests
+import json
+
+import glob
+from collections import defaultdict
+
+# === 数据检索系统 ===
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+
+# 数据文件索引（缓存）
+data_index = {}
+
 
 app = Flask(__name__, static_folder='static')
 CORS(app)  # 启用跨域支持
@@ -402,6 +414,309 @@ def report():
 @app.route('/about')
 def about():
     return send_from_directory(app.static_folder, 'about.html')
+
+@app.route('/gpt')
+def gpt():
+    return send_from_directory(app.static_folder, 'gpt.html')
+
+# === DeepSeek API 配置 ===
+DEEPSEEK_API_KEY = 'sk-a89f48e8ce9946198f91abceee3f756a'  # 从环境变量读取，或直接填写
+DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
+
+# 存储对话历史（实际项目中建议使用数据库或 Redis）
+chat_history = {}
+
+def build_data_index():
+    """构建数据文件索引"""
+    global data_index
+    if data_index:
+        return data_index
+    
+    data_index = {}
+    csv_files = glob.glob(os.path.join(DATA_DIR, '*.csv'))
+    
+    for csv_file in csv_files:
+        filename = os.path.basename(csv_file)
+        try:
+            if pd is not None:
+                df = pd.read_csv(csv_file, encoding='utf-8-sig', nrows=100)  # 只读前100行用于索引
+                df.columns = [c.strip() for c in df.columns]
+                
+                # 提取关键信息
+                columns = list(df.columns)
+                sample_data = df.head(5).to_dict('records') if len(df) > 0 else []
+                
+                data_index[filename] = {
+                    'columns': columns,
+                    'sample_data': sample_data,
+                    'row_count': len(df),
+                    'keywords': extract_keywords(filename, columns, sample_data)
+                }
+            else:
+                # 无pandas时的简单处理
+                with open(csv_file, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    rows = list(reader)[:100]
+                    if rows:
+                        columns = list(rows[0].keys())
+                        data_index[filename] = {
+                            'columns': columns,
+                            'sample_data': rows[:5],
+                            'row_count': len(rows),
+                            'keywords': extract_keywords(filename, columns, rows[:5])
+                        }
+        except Exception as e:
+            logging.warning(f"索引文件 {filename} 失败: {str(e)}")
+            continue
+    
+    return data_index
+
+def extract_keywords(filename, columns, sample_data):
+    """从文件名、列名和数据中提取关键词"""
+    keywords = set()
+    
+    # 从文件名提取
+    filename_lower = filename.lower()
+    keywords.add(filename_lower.replace('.csv', ''))
+    
+    # 从列名提取
+    for col in columns:
+        col_lower = str(col).lower()
+        keywords.add(col_lower)
+        # 提取中文关键词
+        if '人口' in col or '城镇化' in col:
+            keywords.update(['人口', '城镇化', '人口统计'])
+        if '空气' in col or 'pm' in col_lower or 'pm25' in col_lower or 'pm10' in col_lower:
+            keywords.update(['空气质量', 'pm2.5', 'pm10', '空气污染'])
+        if '水质' in col or '水' in col:
+            keywords.update(['水质', '水资源', '水监测'])
+        if '气温' in col or '温度' in col:
+            keywords.update(['气温', '温度', '气象'])
+        if '学生' in col or '教育' in col:
+            keywords.update(['学生', '教育', '学校'])
+        if '医院' in col or '医疗' in col:
+            keywords.update(['医院', '医疗', '健康'])
+        if '旅游' in col or '旅行社' in col:
+            keywords.update(['旅游', '旅行社'])
+        if '消费' in col or '零售' in col:
+            keywords.update(['消费', '零售', '经济'])
+        if '企业' in col or '工业' in col:
+            keywords.update(['企业', '工业', '经济'])
+    
+    return list(keywords)
+
+def search_relevant_data(user_query):
+    """根据用户问题搜索相关数据"""
+    query_lower = user_query.lower()
+    relevant_files = []
+    
+    # 构建索引
+    index = build_data_index()
+    
+    # 匹配相关文件
+    for filename, info in index.items():
+        score = 0
+        keywords = info.get('keywords', [])
+        
+        # 检查关键词匹配
+        for keyword in keywords:
+            if keyword in query_lower:
+                score += 1
+        
+        # 检查列名匹配
+        for col in info.get('columns', []):
+            col_lower = str(col).lower()
+            if any(word in col_lower for word in query_lower.split() if len(word) > 2):
+                score += 0.5
+        
+        if score > 0:
+            relevant_files.append((filename, score, info))
+    
+    # 按分数排序，返回前3个最相关的文件
+    relevant_files.sort(key=lambda x: x[1], reverse=True)
+    return relevant_files[:3]
+
+def load_data_context(file_info_list):
+    """加载相关数据文件的上下文"""
+    context_parts = []
+    
+    for filename, score, info in file_info_list:
+        csv_path = os.path.join(DATA_DIR, filename)
+        try:
+            if pd is not None:
+                df = pd.read_csv(csv_path, encoding='utf-8-sig')
+                df.columns = [c.strip() for c in df.columns]
+                
+                # 限制数据量，避免上下文过长
+                if len(df) > 50:
+                    df_sample = df.head(50)  # 只取前50行
+                else:
+                    df_sample = df
+                
+                # 转换为文本格式
+                data_text = f"\n数据文件：{filename}\n"
+                data_text += f"列名：{', '.join(df.columns.tolist())}\n"
+                data_text += "数据示例（前50行）：\n"
+                data_text += df_sample.to_string(index=False)
+                
+                # 添加统计信息
+                numeric_cols = df.select_dtypes(include=['number']).columns
+                if len(numeric_cols) > 0:
+                    data_text += f"\n\n统计摘要：\n"
+                    for col in numeric_cols[:3]:  # 只显示前3个数值列
+                        data_text += f"{col}: 平均值={df[col].mean():.2f}, 最大值={df[col].max():.2f}, 最小值={df[col].min():.2f}\n"
+                
+                context_parts.append(data_text)
+            else:
+                # 无pandas时的简单处理
+                with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    rows = list(reader)[:50]  # 限制50行
+                    
+                    data_text = f"\n数据文件：{filename}\n"
+                    if rows:
+                        data_text += f"列名：{', '.join(rows[0].keys())}\n"
+                        data_text += "数据示例（前50行）：\n"
+                        for i, row in enumerate(rows[:10], 1):  # 只显示前10行
+                            data_text += f"{i}. {dict(row)}\n"
+                    
+                    context_parts.append(data_text)
+        except Exception as e:
+            logging.warning(f"加载数据文件 {filename} 失败: {str(e)}")
+            continue
+    
+    return "\n".join(context_parts)
+
+# 修改 chat() 函数，在调用 DeepSeek API 之前添加数据检索
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """处理聊天请求，调用 DeepSeek API"""
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '').strip()
+        session_id = data.get('session_id', 'default')
+        
+        if not user_message:
+            return jsonify({'error': '消息不能为空'}), 400
+        
+        # 获取或初始化对话历史
+        if session_id not in chat_history:
+            chat_history[session_id] = []
+        
+        # 🔍 检索相关数据
+        relevant_files = search_relevant_data(user_message)
+        data_context = ""
+        if relevant_files:
+            data_context = load_data_context(relevant_files)
+            logging.info(f"检索到 {len(relevant_files)} 个相关数据文件：{relevant_files}")
+        
+        # 构建消息列表（包含历史对话）
+        messages = chat_history[session_id].copy()
+        
+        # 添加系统提示词（包含数据上下文）
+        system_content = """你是数智湖北AI助手，专门帮助用户分析数据、解答问题。请用友好、专业的语气回答。
+
+重要提示：
+1. 如果用户询问关于数据的问题，请优先使用提供的本地数据来回答
+2. 回答时要引用具体的数据值和数据来源
+3. 如果数据中没有相关信息，请明确说明
+4. 可以基于数据进行简单的分析和趋势判断"""
+        
+        # 如果有相关数据，添加到系统提示词中
+        if data_context:
+            system_content += f"\n\n以下是相关的本地数据，请基于这些数据回答用户问题：\n{data_context}"
+        
+        system_message = {
+            "role": "system",
+            "content": system_content
+        }
+        
+        # 如果历史记录中没有系统消息，则添加（每次更新系统消息以包含最新数据）
+        # 移除旧的系统消息
+        messages = [msg for msg in messages if msg.get('role') != 'system']
+        messages.insert(0, system_message)
+        
+        # 添加用户消息
+        messages.append({
+            "role": "user",
+            "content": user_message
+        })
+        
+        # 调用 DeepSeek API
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {DEEPSEEK_API_KEY}'
+        }
+        
+        payload = {
+            "model": "deepseek-chat",
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "stream": False
+        }
+        
+        response = requests.post(
+            DEEPSEEK_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result['choices'][0]['message']['content']
+            
+            # 更新对话历史（不保存系统消息，只保存用户和AI的对话）
+            chat_history[session_id].append({
+                "role": "user",
+                "content": user_message
+            })
+            chat_history[session_id].append({
+                "role": "assistant",
+                "content": ai_response
+            })
+            
+            # 限制历史记录长度
+            if len(chat_history[session_id]) > 40:
+                chat_history[session_id] = chat_history[session_id][-40:]
+            
+            return jsonify({
+                'response': ai_response,
+                'session_id': session_id,
+                'data_sources': [f[0] for f in relevant_files] if relevant_files else []  # 返回使用的数据源
+            })
+        else:
+            error_msg = f"API调用失败: {response.status_code}"
+            try:
+                error_detail = response.json()
+                error_msg = error_detail.get('error', {}).get('message', error_msg)
+            except:
+                pass
+            return jsonify({'error': error_msg}), response.status_code
+            
+    except requests.exceptions.Timeout:
+        return jsonify({'error': '请求超时，请稍后重试'}), 504
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'网络错误: {str(e)}'}), 500
+    except Exception as e:
+        logging.error(f"Chat error: {str(e)}")
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+
+@app.route('/api/chat/clear', methods=['POST'])
+def clear_chat_history():
+    """清空指定会话的对话历史"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id', 'default')
+        
+        if session_id in chat_history:
+            chat_history[session_id] = []
+            return jsonify({'success': True, 'message': '对话历史已清空'})
+        else:
+            return jsonify({'success': True, 'message': '没有对话历史需要清空'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # === 2️⃣ 核心预测指标接口（GDP、失业率、新能源汽车、PM2.5）===
 @app.route('/api/core-indicators', methods=['GET'])

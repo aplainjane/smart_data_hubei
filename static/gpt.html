@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数智湖北 · AI对话助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card-glass {
+                background: rgba(14, 21, 37, 0.72);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(0, 240, 255, 0.12);
+            }
+            .neon-border {
+                box-shadow: 0 0 6px rgba(0, 240, 255, 0.06);
+            }
+            .text-glow {
+                text-shadow: 0 0 4px rgba(0, 240, 255, 0.6), 0 0 8px rgba(0, 240, 255, 0.3);
+            }
+            .message-user {
+                background: linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(177, 78, 255, 0.15) 100%);
+                border-left: 3px solid #00F0FF;
+            }
+            .message-ai {
+                background: rgba(14, 21, 37, 0.6);
+                border-left: 3px solid #B14EFF;
+            }
+            .typing-indicator {
+                display: inline-flex;
+                gap: 4px;
+            }
+            .typing-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #00F0FF;
+                animation: typing 1.4s infinite;
+            }
+            .typing-dot:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+            .typing-dot:nth-child(3) {
+                animation-delay: 0.4s;
+            }
+            @keyframes typing {
+                0%, 60%, 100% {
+                    transform: translateY(0);
+                    opacity: 0.7;
+                }
+                30% {
+                    transform: translateY(-10px);
+                    opacity: 1;
+                }
+            }
+            .fade-in {
+                animation: fadeIn 0.3s ease-in;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        }
+    </style>
+</head>
+
+<body class="font-sans bg-gradient-to-br from-[#070815] to-[#0f1724] text-gray-200 min-h-screen flex flex-col">
+    <!-- 粒子背景 -->
+    <div id="particles-js" class="fixed inset-0 z-0 opacity-60"></div>
+
+    <!-- 顶部导航 -->
+    <header class="sticky top-0 z-40 card-glass py-3 neon-border backdrop-blur">
+        <div class="container mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B14EFF] flex items-center justify-center">
+                    <i class="fa fa-comments text-black text-2xl"></i>
+                </div>
+                <h1 class="text-xl font-bold text-[#00F0FF]">数智湖北<span class="text-[#B14EFF]">·AI助手</span></h1>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-6">
+                <a href="home" class="text-gray-300 hover:text-[#00F0FF] transition">数据预测</a>
+                <a href="data_center" class="text-gray-300 hover:text-[#00F0FF] transition">数据中心</a>
+                <a href="report" class="text-gray-300 hover:text-[#00F0FF] transition">数据报告</a>
+                <a href="about" class="text-gray-300 hover:text-[#00F0FF] transition">关于我们</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 对话区域 -->
+    <main class="flex-1 container mx-auto px-4 py-6 relative z-10 flex flex-col max-w-4xl">
+        <!-- 欢迎消息 -->
+        <div id="welcome-message" class="text-center mb-6 fade-in">
+            <h2 class="text-2xl font-bold mb-2 text-glow">欢迎使用AI数据助手</h2>
+            <p class="text-gray-400">我可以帮您分析数据、解答问题、提供建议</p>
+        </div>
+
+        <!-- 消息列表 -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto mb-4 space-y-4 pb-4">
+            <!-- 示例消息（可以删除） -->
+            <div class="message-ai p-4 rounded-lg fade-in">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-[#B14EFF] to-[#FF0080] flex items-center justify-center flex-shrink-0">
+                        <i class="fa fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-400 mb-1">AI助手</div>
+                        <div class="text-gray-200 leading-relaxed">您好！我是数智湖北AI助手，可以帮您分析数据、解答问题。请告诉我您需要什么帮助？</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="card-glass p-4 rounded-lg neon-border">
+            <form id="chat-form" class="flex gap-3">
+                <div class="flex-1 relative">
+                    <textarea 
+                        id="message-input" 
+                        rows="1"
+                        placeholder="输入您的问题..."
+                        class="w-full bg-transparent border border-[#00F0FF]/20 rounded-lg px-4 py-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#00F0FF]/50 resize-none"
+                        style="max-height: 120px;"
+                    ></textarea>
+                </div>
+                <button 
+                    type="submit"
+                    id="send-btn"
+                    class="px-6 py-3 bg-gradient-to-r from-[#00F0FF] to-[#B14EFF] text-white rounded-lg hover:from-[#00F0FF]/90 hover:to-[#B14EFF]/90 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <i class="fa fa-paper-plane"></i>
+                    <span class="hidden sm:inline">发送</span>
+                </button>
+            </form>
+            <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
+                <span>按 Enter 发送，Shift+Enter 换行</span>
+                <button id="clear-btn" class="text-[#00F0FF] hover:underline">
+                    <i class="fa fa-trash mr-1"></i>清空对话
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-8 py-6 text-center text-gray-400 relative z-10">
+        © 2025 数智湖北量子数据预测平台
+    </footer>
+
+    <script>
+        let sessionId = 'session_' + Date.now(); // 生成唯一会话ID
+        // 初始化粒子背景
+        particlesJS("particles-js", {
+            particles: {
+                number: { value: 50 },
+                color: { value: "#00F0FF" },
+                opacity: { value: 0.16 },
+                size: { value: 3 },
+                move: { speed: 0.6 }
+            },
+            retina_detect: true
+        });
+
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const chatForm = document.getElementById('chat-form');
+        const sendBtn = document.getElementById('send-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const welcomeMessage = document.getElementById('welcome-message');
+
+        // 自动调整输入框高度
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // 处理 Enter 和 Shift+Enter
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sendBtn.disabled) {
+                    chatForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+
+        // 添加用户消息
+        function addUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-user p-4 rounded-lg fade-in';
+            messageDiv.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="flex-1 text-right">
+                        <div class="text-sm text-gray-400 mb-1">您</div>
+                        <div class="text-gray-200 leading-relaxed inline-block">${escapeHtml(text)}</div>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B14EFF] flex items-center justify-center flex-shrink-0">
+                        <i class="fa fa-user text-white text-sm"></i>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // 添加AI消息
+        function addAIMessage(text, isTyping = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-ai p-4 rounded-lg fade-in';
+            if (isTyping) {
+                messageDiv.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-r from-[#B14EFF] to-[#FF0080] flex items-center justify-center flex-shrink-0">
+                            <i class="fa fa-robot text-white text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm text-gray-400 mb-1">AI助手</div>
+                            <div class="typing-indicator">
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-r from-[#B14EFF] to-[#FF0080] flex items-center justify-center flex-shrink-0">
+                            <i class="fa fa-robot text-white text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm text-gray-400 mb-1">AI助手</div>
+                            <div class="text-gray-200 leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+            return messageDiv;
+        }
+
+        // 更新AI消息内容（用于打字效果）
+        function updateAIMessage(messageDiv, text) {
+            const contentDiv = messageDiv.querySelector('.flex-1 > div:last-child');
+            if (contentDiv) {
+                contentDiv.innerHTML = `<div class="text-gray-200 leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</div>`;
+            }
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 模拟打字效果
+        function typeMessage(messageDiv, text, callback) {
+            let index = 0;
+            const interval = setInterval(() => {
+                if (index < text.length) {
+                    updateAIMessage(messageDiv, text.substring(0, index + 1));
+                    index++;
+                    scrollToBottom();
+                } else {
+                    clearInterval(interval);
+                    if (callback) callback();
+                }
+            }, 30); // 调整速度：30ms per character
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // 隐藏欢迎消息
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'none';
+            }
+
+            // 添加用户消息
+            addUserMessage(message);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            // 禁用发送按钮
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+
+            // 添加AI正在输入的指示器
+            const typingMessage = addAIMessage('', true);
+
+            try {
+                // 调用后端API
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        message: message,
+                        session_id: sessionId  // 添加会话ID
+                    })
+                });
+
+                const data = await response.json();
+                
+                // 移除打字指示器
+                typingMessage.remove();
+
+                // 检查响应状态和错误
+                if (!response.ok || data.error) {
+                    // 处理错误情况
+                    const errorMsg = data.error || '请求失败，请稍后重试';
+                    const aiMessage = addAIMessage(`抱歉，发生了错误：${errorMsg}`);
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fa fa-paper-plane"></i><span class="hidden sm:inline">发送</span>';
+                    return;
+                }
+
+                // 成功情况：添加AI回复（带打字效果）
+                const aiResponse = data.response || '抱歉，我暂时无法回答这个问题。';
+                const aiMessage = addAIMessage('');
+                typeMessage(aiMessage, aiResponse, () => {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fa fa-paper-plane"></i><span class="hidden sm:inline">发送</span>';
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                typingMessage.remove();
+                const aiMessage = addAIMessage('抱歉，发生了网络错误。请检查网络连接后重试。');
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fa fa-paper-plane"></i><span class="hidden sm:inline">发送</span>';
+            }
+        }
+
+        // 表单提交
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage();
+        });
+
+        // 修改清空对话功能（第345-353行）
+        clearBtn.addEventListener('click', async () => {
+            if (confirm('确定要清空所有对话记录吗？')) {
+                // 调用后端清空历史
+                try {
+                    await fetch('/api/chat/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                } catch (e) {
+                    console.error('清空历史失败:', e);
+                    // 即使后端清空失败，前端也继续清空显示
+                }
+                
+                // 清空前端显示
+                chatMessages.innerHTML = '';
+                if (welcomeMessage) {
+                    welcomeMessage.style.display = 'block';
+                }
+                // 生成新的会话ID，开始新的对话
+                sessionId = 'session_' + Date.now();
+            }
+        });
+
+        // 页面加载完成后聚焦输入框
+        window.addEventListener('load', () => {
+            messageInput.focus();
+        });
+    </script>
+</body>
+</html>
