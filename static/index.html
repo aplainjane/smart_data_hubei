@@ -1211,6 +1211,29 @@
                     tension: dataset.tension,
                     fill: dataset.fill
                 });
+
+                // --- 添加连接线 dataset（虚线连接历史最后一点与预测第一点） ---
+                const lastHistorical = data.historical.datasets[0].data.slice(-1)[0];
+                const firstForecast = data.predictions.datasets[0].data[0];
+
+                const connectLine = new Array(allLabels.length).fill(null);
+
+                // 历史最后一个点的位置
+                connectLine[data.historical.labels.length - 1] = lastHistorical;
+
+                // 预测第一个点的位置
+                connectLine[data.historical.labels.length] = firstForecast;
+
+                chartDatasets.push({
+                    label: '趋势连接',
+                    data: connectLine,
+                    borderColor: 'rgba(255,255,255,0.4)',
+                    borderWidth: 2,
+                    borderDash: [6, 6],
+                    pointRadius: 0,
+                    tension: 0,
+                    fill: false
+                });
             });
 
             // 计算Y轴合适的范围
